@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getCategories, createCategory, createProduct } from "@/lib/api/inventory";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import CategorySelector from "@/components/CategorySelector";
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -23,14 +24,12 @@ export default function NewProductPage() {
     lowStockThreshold: "5",
     initialQuantity: "0",
     imeis: "",
-    supplierName: "",
     imageUrl: "",
   });
 
   const [imageSourceType, setImageSourceType] = useState<"file" | "url">("file");
   const [fileInputKey, setFileInputKey] = useState(Date.now());
-  const [newCatName, setNewCatName] = useState("");
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  // Category Selector states are fully encapsulated in CategorySelector component
 
   useEffect(() => {
     if (!authLoading && role !== "owner") {
@@ -38,6 +37,42 @@ export default function NewProductPage() {
     }
     loadCategories();
   }, [authLoading, role]);
+
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, allowDecimal = false) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      return;
+    }
+    if (
+      [46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+      (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) ||
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    if (allowDecimal && e.key === ".") {
+      if (e.currentTarget.value.includes(".")) {
+        e.preventDefault();
+      }
+      return;
+    }
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTextOnlyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      [46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+      (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) ||
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    if ((e.keyCode >= 48 && e.keyCode <= 57) || (e.keyCode >= 96 && e.keyCode <= 105)) {
+      e.preventDefault();
+    }
+  };
 
   const loadCategories = async () => {
     try {
@@ -48,16 +83,14 @@ export default function NewProductPage() {
     }
   };
 
-  const handleAddCategory = async () => {
-    if (!newCatName) return;
+  const handleCreateCategory = async (name: string, parentCategoryId?: number) => {
     try {
-      const cat = await createCategory({ name: newCatName });
-      setCategories([...categories, cat]);
-      setFormData({ ...formData, categoryId: cat.id.toString() });
-      setNewCatName("");
-      setIsAddingCategory(false);
+      const cat = await createCategory({ name, parentCategoryId });
+      setCategories((prev) => [...prev, cat]);
+      return cat;
     } catch (err) {
       setError("Failed to create category");
+      throw err;
     }
   };
 
@@ -112,8 +145,9 @@ export default function NewProductPage() {
         sellingPrice: parseFloat(formData.sellingPrice),
         lowStockThreshold: threshold,
         initialQuantity: formData.productType === "quantity" ? parseInt(formData.initialQuantity) || 0 : 0,
-        imeis: formData.productType === "serialized" ? formData.imeis.split(",").map(i => i.trim()).filter(Boolean) : [],
-        supplierName: formData.supplierName || undefined,
+        imeis: (formData.productType === "serialized" || formData.productType === "electronics")
+          ? formData.imeis.split(",").map(i => i.trim()).filter(Boolean)
+          : [],
         imageUrl: formData.imageUrl || undefined,
       };
 
@@ -158,52 +192,12 @@ export default function NewProductPage() {
 
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
-          {isAddingCategory ? (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="New Category Name"
-                className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                value={newCatName}
-                onChange={(e) => setNewCatName(e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={handleAddCategory}
-                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-bold"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddingCategory(false)}
-                className="text-gray-600 hover:text-gray-900 px-2 font-bold"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <select
-                required
-                className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-              >
-                <option value="">Select a category</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => setIsAddingCategory(true)}
-                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 text-sm border border-gray-300 font-bold"
-              >
-                + New
-              </button>
-            </div>
-          )}
+          <CategorySelector
+            categories={categories}
+            selectedCategoryId={formData.categoryId}
+            onChange={(catId) => setFormData({ ...formData, categoryId: catId })}
+            onAddCategory={handleCreateCategory}
+          />
         </div>
 
         <div>
@@ -216,6 +210,7 @@ export default function NewProductPage() {
           >
             <option value="quantity">Quantity Based (e.g. Chargers, Cables)</option>
             <option value="serialized">Serialized (e.g. Mobile Phones with IMEIs)</option>
+            <option value="electronics">Electronics (with S M No.)</option>
           </select>
         </div>
 
@@ -304,6 +299,8 @@ export default function NewProductPage() {
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               value={formData.costPrice}
               onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+              onKeyDown={(e) => handleNumberKeyDown(e, true)}
+              onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
           </div>
           <div>
@@ -315,6 +312,8 @@ export default function NewProductPage() {
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               value={formData.sellingPrice}
               onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
+              onKeyDown={(e) => handleNumberKeyDown(e, true)}
+              onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
           </div>
         </div>
@@ -323,50 +322,42 @@ export default function NewProductPage() {
         <div className="border-t pt-4 mt-4 space-y-4">
           <h3 className="text-sm font-bold text-gray-800">Initial Stock Setup</h3>
           {formData.productType === "quantity" ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Initial Stock Quantity</label>
-                <input
-                  type="number"
-                  min="0"
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  value={formData.initialQuantity}
-                  onChange={(e) => setFormData({ ...formData, initialQuantity: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Supplier Name (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Lalit Distributor"
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  value={formData.supplierName}
-                  onChange={(e) => setFormData({ ...formData, supplierName: e.target.value })}
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Initial Stock Quantity</label>
+              <input
+                type="number"
+                min="0"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                value={formData.initialQuantity}
+                onChange={(e) => setFormData({ ...formData, initialQuantity: e.target.value })}
+                onKeyDown={(e) => handleNumberKeyDown(e, false)}
+                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+              />
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Initial IMEIs (Comma Separated)</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  {formData.productType === "electronics"
+                    ? "Initial S M Numbers (Comma Separated)"
+                    : "Initial IMEIs (Comma Separated)"}
+                </label>
                 <textarea
-                  placeholder="e.g. 866365081122723, 866365081122724"
+                  placeholder={
+                    formData.productType === "electronics"
+                      ? "e.g. SN1000234, SN1000235"
+                      : "e.g. 866365081122723, 866365081122724"
+                  }
                   rows={2}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   value={formData.imeis}
                   onChange={(e) => setFormData({ ...formData, imeis: e.target.value })}
                 />
-                <span className="text-[10px] text-gray-500 mt-1 block">Separate multiple IMEI numbers with commas. The initial stock will count the number of entered IMEIs.</span>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Supplier Name (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Lalit Distributor"
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  value={formData.supplierName}
-                  onChange={(e) => setFormData({ ...formData, supplierName: e.target.value })}
-                />
+                <span className="text-[10px] text-gray-500 mt-1 block">
+                  {formData.productType === "electronics"
+                    ? "Separate multiple S M Numbers with commas. The initial stock will count the number of entered S M Numbers."
+                    : "Separate multiple IMEI numbers with commas. The initial stock will count the number of entered IMEIs."}
+                </span>
               </div>
             </div>
           )}

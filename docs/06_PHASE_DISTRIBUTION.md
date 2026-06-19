@@ -123,7 +123,7 @@ gantt
   - `Category` (id, name, parentCategoryId, isActive)
   - `Product` (id, categoryId, name, brand, productType, costPrice, sellingPrice, quantityInStock, lowStockThreshold, isActive, createdAt, updatedAt)
   - `ProductUnit` (id, productId, imeiNumber, status, costPrice, addedAt, soldAt)
-  - `StockInRecord` (id, productId, quantityAdded, costPrice, supplierName, addedByUserId, createdAt)
+  - `StockInRecord` (id, productId, quantityAdded, costPrice, addedByUserId, createdAt)
   - `Customer` (id, name, phone)
   - `Bill` (id, billNumber, customerId, createdByUserId, subtotal, discount, totalAmount, paymentMode, status, createdAt)
   - `BillItem` (id, billId, productId, productUnitId, quantity, unitPrice, lineTotal)

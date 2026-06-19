@@ -62,7 +62,6 @@ erDiagram
         int product_id FK
         int quantity_added
         numeric cost_price
-        string supplier_name
         int added_by_user_id FK
         datetime created_at
     }
@@ -158,7 +157,6 @@ Audit trail of every stock addition — the "history" the owner can review.
 | product_id | INT, FK → products.id | |
 | quantity_added | INT | for serialized restocks, equals number of IMEIs added in that batch |
 | cost_price | NUMERIC(10,2) | cost price at time of this batch |
-| supplier_name | VARCHAR(100) | optional |
 | added_by_user_id | INT, FK → users.id | |
 | created_at | TIMESTAMP | |
 

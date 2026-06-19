@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { id } = await params;
     const productId = parseInt(id);
     const body = await req.json();
-    const { quantity, imeis, supplierName, costPrice } = body;
+    const { quantity, imeis, costPrice } = body;
 
     const product = await prisma.product.findUnique({
       where: { id: productId },
@@ -29,9 +29,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const result = await prisma.$transaction(async (tx) => {
       let quantityAdded = 0;
 
-      if (product.productType === "serialized") {
+      if (product.productType === "serialized" || product.productType === "electronics") {
         if (!imeis || !Array.isArray(imeis) || imeis.length === 0) {
-          throw new Error("IMEIs are required for serialized products");
+          throw new Error(
+            product.productType === "electronics"
+              ? "S M Numbers are required for electronics products"
+              : "IMEIs are required for serialized products"
+          );
         }
 
         quantityAdded = imeis.length;
@@ -61,7 +65,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           productId,
           quantityAdded,
           costPrice: actualCostPrice,
-          supplierName: supplierName || null,
           addedByUserId: parseInt(session.user.id),
         },
       });

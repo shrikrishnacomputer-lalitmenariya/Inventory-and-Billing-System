@@ -76,7 +76,6 @@ model StockInRecord {
   productId      Int       @map("product_id")
   quantityAdded  Int       @map("quantity_added")
   costPrice      Decimal   @map("cost_price") 
-  supplierName   String?   @map("supplier_name") 
   addedByUserId  Int       @map("added_by_user_id")
   createdAt      DateTime  @default(now()) @map("created_at")
 

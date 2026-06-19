@@ -43,6 +43,19 @@ export default function StaffManagementPage() {
     loadUsers();
   }, [authLoading, role]);
 
+  const handleTextOnlyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      [46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+      (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) ||
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    if ((e.keyCode >= 48 && e.keyCode <= 57) || (e.keyCode >= 96 && e.keyCode <= 105)) {
+      e.preventDefault();
+    }
+  };
+
   const loadUsers = async () => {
     try {
       setLoading(true);
@@ -239,6 +252,7 @@ export default function StaffManagementPage() {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onKeyDown={handleTextOnlyKeyDown}
                 />
               </div>
 
