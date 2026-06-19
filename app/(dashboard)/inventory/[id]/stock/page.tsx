@@ -19,7 +19,6 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
 
   const [quantity, setQuantity] = useState("1");
   const [imeiInput, setImeiInput] = useState(""); // text area for pasted IMEIs
-  const [supplierName, setSupplierName] = useState("");
   const [costPrice, setCostPrice] = useState("");
 
   useEffect(() => {
@@ -29,6 +28,29 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
     }
     loadProduct();
   }, [authLoading, role]);
+
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, allowDecimal = false) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      return;
+    }
+    if (
+      [46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+      (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) ||
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    if (allowDecimal && e.key === ".") {
+      if (e.currentTarget.value.includes(".")) {
+        e.preventDefault();
+      }
+      return;
+    }
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+      e.preventDefault();
+    }
+  };
 
   const loadProduct = async () => {
     try {
@@ -52,18 +74,21 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
 
     try {
       const payload: any = {
-        supplierName,
         costPrice: parseFloat(costPrice) || undefined,
       };
 
-      if (product.productType === "serialized") {
+      if (product.productType === "serialized" || product.productType === "electronics") {
         const imeis = imeiInput
           .split(/[\n,]/)
           .map((i) => i.trim())
           .filter((i) => i.length > 0);
           
         if (imeis.length === 0) {
-          throw new Error("Please enter at least one IMEI");
+          throw new Error(
+            product.productType === "electronics"
+              ? "Please enter at least one S M Number"
+              : "Please enter at least one IMEI"
+          );
         }
         payload.imeis = imeis;
       } else {
@@ -92,21 +117,29 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
 
       <form onSubmit={handleSubmit} className="space-y-6">
         
-        {product.productType === "serialized" ? (
+        {product.productType === "serialized" || product.productType === "electronics" ? (
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              IMEI Numbers (Comma separated or one per line)
+              {product.productType === "electronics"
+                ? "S M Numbers (Comma separated or one per line)"
+                : "IMEI Numbers (Comma separated or one per line)"}
             </label>
             <textarea
               required
               rows={5}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="e.g. 359123456789012, 359123456789013"
+              placeholder={
+                product.productType === "electronics"
+                  ? "e.g. SN123456, SN123457"
+                  : "e.g. 359123456789012, 359123456789013"
+              }
               value={imeiInput}
               onChange={(e) => setImeiInput(e.target.value)}
             />
             <p className="mt-1 text-sm text-gray-500">
-              Stock quantity will be calculated based on the number of IMEIs provided.
+              {product.productType === "electronics"
+                ? "Stock quantity will be calculated based on the number of S M Numbers provided."
+                : "Stock quantity will be calculated based on the number of IMEIs provided."}
             </p>
           </div>
         ) : (
@@ -119,31 +152,24 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
+              onKeyDown={(e) => handleNumberKeyDown(e, false)}
+              onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Supplier Name (Optional)</label>
-            <input
-              type="text"
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              value={supplierName}
-              onChange={(e) => setSupplierName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Unit Cost Price (₹)</label>
-            <input
-              type="number"
-              step="0.01"
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              value={costPrice}
-              onChange={(e) => setCostPrice(e.target.value)}
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Unit Cost Price (₹)</label>
+          <input
+            type="number"
+            step="0.01"
+            required
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            value={costPrice}
+            onChange={(e) => setCostPrice(e.target.value)}
+            onKeyDown={(e) => handleNumberKeyDown(e, true)}
+            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+          />
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t">

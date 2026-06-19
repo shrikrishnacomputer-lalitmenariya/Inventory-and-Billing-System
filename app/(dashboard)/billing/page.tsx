@@ -54,6 +54,42 @@ function numberToWords(num: number): string {
 
 export default function BillingPage() {
   const { user } = useAuth();
+
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, allowDecimal = false) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      return;
+    }
+    if (
+      [46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+      (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) ||
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    if (allowDecimal && e.key === ".") {
+      if (e.currentTarget.value.includes(".")) {
+        e.preventDefault();
+      }
+      return;
+    }
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTextOnlyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      [46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+      (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) ||
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    if ((e.keyCode >= 48 && e.keyCode <= 57) || (e.keyCode >= 96 && e.keyCode <= 105)) {
+      e.preventDefault();
+    }
+  };
   
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -194,7 +230,9 @@ export default function BillingPage() {
       const itemsPayload = cart.map((item) => ({
         productId: item.product.id,
         quantity: item.quantity,
-        productUnitId: item.product.productType === "serialized" ? parseInt(item.selectedUnitId) : undefined,
+        productUnitId: (item.product.productType === "serialized" || item.product.productType === "electronics")
+          ? parseInt(item.selectedUnitId)
+          : undefined,
       }));
 
       const billData = {
@@ -348,7 +386,7 @@ export default function BillingPage() {
               const pRate = item.product ? item.product.sellingPrice : item.unitPrice;
               const pQty = item.quantity;
               const pTotal = item.product ? (item.product.sellingPrice * item.quantity) : item.lineTotal;
-              const imei = item.productUnit?.imeiNumber || (item.product?.productType === "serialized" && item.product.units?.find((u: any) => u.id.toString() === item.selectedUnitId)?.imeiNumber);
+              const imei = item.productUnit?.imeiNumber || ((item.product?.productType === "serialized" || item.product?.productType === "electronics") && item.product.units?.find((u: any) => u.id.toString() === item.selectedUnitId)?.imeiNumber);
 
               return (
                 <tr key={idx} className="border-b border-[#1b3f8b]">
@@ -357,7 +395,7 @@ export default function BillingPage() {
                     <div className="font-bold text-gray-800">{pName}</div>
                     {imei && (
                       <div className="text-[8px] text-gray-600 font-semibold mt-0.5">
-                        IMEI: {imei}
+                        {item.product?.productType === "electronics" ? "S M No." : "IMEI"}: {imei}
                       </div>
                     )}
                   </td>
@@ -542,7 +580,7 @@ export default function BillingPage() {
                       ₹{item.product.sellingPrice}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {item.product.productType === "serialized" ? (
+                      {item.product.productType === "serialized" || item.product.productType === "electronics" ? (
                         <select
                           className="border border-gray-300 rounded-md px-2 py-1 text-xs max-w-[180px] font-medium focus:ring-1 focus:ring-blue-500"
                           value={item.selectedUnitId}
@@ -562,6 +600,8 @@ export default function BillingPage() {
                           className="border border-gray-300 rounded-md px-2 py-1 text-xs w-16 text-center font-semibold focus:ring-1 focus:ring-blue-500"
                           value={item.quantity}
                           onChange={(e) => updateQuantity(item.product.id, Math.min(item.product.quantityInStock, Math.max(1, parseInt(e.target.value) || 1)))}
+                          onKeyDown={(e) => handleNumberKeyDown(e, false)}
+                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
                         />
                       )}
                     </td>
@@ -603,6 +643,7 @@ export default function BillingPage() {
                 }`}
                 value={phone}
                 onChange={handlePhoneChange}
+                onKeyDown={(e) => handleNumberKeyDown(e, false)}
               />
               {isSearchingCustomer && <span className="absolute right-3 top-2.5 text-xs text-blue-500 font-bold">Searching...</span>}
             </div>
@@ -626,6 +667,7 @@ export default function BillingPage() {
               }`}
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
+              onKeyDown={handleTextOnlyKeyDown}
             />
             {phone.trim().length > 0 && customerName.trim() === "" && (
               <span className="text-[10px] text-red-500 font-bold mt-1 block">Name is required when phone is entered</span>
@@ -667,6 +709,8 @@ export default function BillingPage() {
               className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
               value={discount}
               onChange={(e) => setDiscount(e.target.value)}
+              onKeyDown={(e) => handleNumberKeyDown(e, true)}
+              onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
           </div>
 

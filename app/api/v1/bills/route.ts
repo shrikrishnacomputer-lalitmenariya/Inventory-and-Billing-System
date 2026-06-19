@@ -117,10 +117,14 @@ export async function POST(req: Request) {
         const lineTotal = Number(price) * qty;
         subtotal += lineTotal;
 
-        if (product.productType === "serialized") {
+        if (product.productType === "serialized" || product.productType === "electronics") {
           // Serialized: quantity must be 1 per unit
           if (!productUnitId) {
-            throw new Error(`Product unit (IMEI) is required for serialized product: ${product.name}`);
+            throw new Error(
+              product.productType === "electronics"
+                ? `Product unit (S M No.) is required for electronics product: ${product.name}`
+                : `Product unit (IMEI) is required for serialized product: ${product.name}`
+            );
           }
 
           const unit = await tx.productUnit.findUnique({
@@ -128,7 +132,11 @@ export async function POST(req: Request) {
           });
 
           if (!unit || unit.status !== "in_stock") {
-            throw new Error(`Selected IMEI unit is no longer available.`);
+            throw new Error(
+              product.productType === "electronics"
+                ? `Selected S M No. unit is no longer available.`
+                : `Selected IMEI unit is no longer available.`
+            );
           }
 
           // Mark unit as sold

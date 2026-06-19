@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getProducts, getCategories, updateProduct, deleteProduct } from "@/lib/api/inventory";
+import { getProducts, getCategories, updateProduct, deleteProduct, createCategory } from "@/lib/api/inventory";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import CategorySelector from "@/components/CategorySelector";
 
 export default function InventoryPage() {
   const { role } = useAuth();
@@ -29,9 +30,47 @@ export default function InventoryPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
 
+  // Category Selector states are fully encapsulated in CategorySelector component
+
   useEffect(() => {
     loadData();
   }, [search, selectedCategory]);
+
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, allowDecimal = false) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      return;
+    }
+    if (
+      [46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+      (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) ||
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    if (allowDecimal && e.key === ".") {
+      if (e.currentTarget.value.includes(".")) {
+        e.preventDefault();
+      }
+      return;
+    }
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTextOnlyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      [46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+      (e.ctrlKey === true && [65, 67, 86, 88].indexOf(e.keyCode) !== -1) ||
+      (e.keyCode >= 35 && e.keyCode <= 39)
+    ) {
+      return;
+    }
+    if ((e.keyCode >= 48 && e.keyCode <= 57) || (e.keyCode >= 96 && e.keyCode <= 105)) {
+      e.preventDefault();
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -62,6 +101,17 @@ export default function InventoryPage() {
     });
     setEditImageSourceType(product.imageUrl?.startsWith("data:") ? "file" : "url");
     setEditError("");
+  };
+
+  const handleCreateCategory = async (name: string, parentCategoryId?: number) => {
+    try {
+      const cat = await createCategory({ name, parentCategoryId });
+      setCategories((prev) => [...prev, cat]);
+      return cat;
+    } catch (err) {
+      setEditError("Failed to create category");
+      throw err;
+    }
   };
 
   const handleDeleteClick = async (productId: number) => {
@@ -127,16 +177,14 @@ export default function InventoryPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          className="border border-gray-300 rounded px-4 py-2 bg-white"
-          value={selectedCategory || ""}
-          onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : undefined)}
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
-          ))}
-        </select>
+        <div className="w-72">
+          <CategorySelector
+            categories={categories}
+            selectedCategoryId={selectedCategory?.toString() || ""}
+            onChange={(catId) => setSelectedCategory(catId ? Number(catId) : undefined)}
+            showAllOption={true}
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -283,17 +331,12 @@ export default function InventoryPage() {
 
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
-                  <select
-                    required
-                    className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    value={editFormData.categoryId}
-                    onChange={(e) => setEditFormData({ ...editFormData, categoryId: e.target.value })}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
+                  <CategorySelector
+                    categories={categories}
+                    selectedCategoryId={editFormData.categoryId}
+                    onChange={(catId) => setEditFormData({ ...editFormData, categoryId: catId })}
+                    onAddCategory={handleCreateCategory}
+                  />
                 </div>
 
                 {/* Product Image Section */}
@@ -397,6 +440,8 @@ export default function InventoryPage() {
                       className="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       value={editFormData.costPrice}
                       onChange={(e) => setEditFormData({ ...editFormData, costPrice: e.target.value })}
+                      onKeyDown={(e) => handleNumberKeyDown(e, true)}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     />
                   </div>
                   <div>
@@ -408,6 +453,8 @@ export default function InventoryPage() {
                       className="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       value={editFormData.sellingPrice}
                       onChange={(e) => setEditFormData({ ...editFormData, sellingPrice: e.target.value })}
+                      onKeyDown={(e) => handleNumberKeyDown(e, true)}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()}
                     />
                   </div>
                 </div>

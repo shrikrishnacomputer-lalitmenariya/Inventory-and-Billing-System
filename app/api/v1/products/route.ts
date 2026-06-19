@@ -17,7 +17,15 @@ export async function GET(req: Request) {
     const where: any = { isActive: true };
 
     if (categoryId) {
-      where.categoryId = parseInt(categoryId);
+      const catId = parseInt(categoryId);
+      const subCats = await prisma.category.findMany({
+        where: { parentCategoryId: catId },
+        select: { id: true },
+      });
+      const catIds = [catId, ...subCats.map((sc) => sc.id)];
+      where.categoryId = {
+        in: catIds,
+      };
     }
 
     if (search) {
@@ -70,7 +78,6 @@ export async function POST(req: Request) {
       lowStockThreshold,
       initialQuantity,
       imeis,
-      supplierName,
       imageUrl,
     } = body;
 
@@ -96,7 +103,7 @@ export async function POST(req: Request) {
 
       let quantityAdded = 0;
 
-      if (productType === "serialized") {
+      if (productType === "serialized" || productType === "electronics") {
         if (imeis && Array.isArray(imeis) && imeis.length > 0) {
           quantityAdded = imeis.length;
 
@@ -126,7 +133,6 @@ export async function POST(req: Request) {
             productId: newProduct.id,
             quantityAdded,
             costPrice: parseFloat(costPrice),
-            supplierName: supplierName || "Initial Stock",
             addedByUserId: parseInt(session.user.id),
           },
         });
