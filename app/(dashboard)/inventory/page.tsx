@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getProducts, getCategories, updateProduct, deleteProduct, createCategory } from "@/lib/api/inventory";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import CategorySelector from "@/components/CategorySelector";
+import CameraScanner from "@/components/CameraScanner";
+import { FaCamera, FaSpinner, FaSearch } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 export default function InventoryPage() {
+  const router = useRouter();
   const { role } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
+  const [showStockScanner, setShowStockScanner] = useState(false);
 
   // Edit modal states
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
@@ -24,11 +29,14 @@ export default function InventoryPage() {
     sellingPrice: "",
     lowStockThreshold: "",
     imageUrl: "",
+    barcode: "",
   });
   const [editImageSourceType, setEditImageSourceType] = useState<"file" | "url">("file");
   const [editFileInputKey, setEditFileInputKey] = useState(Date.now());
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
+  const [showEditScanner, setShowEditScanner] = useState(false);
+  const [isFetchingAPI, setIsFetchingAPI] = useState(false);
 
   // Category Selector states are fully encapsulated in CategorySelector component
 
@@ -72,6 +80,52 @@ export default function InventoryPage() {
     }
   };
 
+  const handleStockScanSuccess = useCallback(async (code: string) => {
+    setShowStockScanner(false);
+    try {
+      const res = await fetch(`/api/v1/products/scan?code=${encodeURIComponent(code)}`);
+      if (!res.ok) {
+        alert("Product not found for this barcode.");
+        return;
+      }
+      const result = await res.json();
+      const product = result.data;
+      router.push(`/inventory/${product.id}/stock`);
+    } catch (err) {
+      console.error(err);
+      alert("Error finding product.");
+    }
+  }, [router]);
+
+  const fetchProductDetails = async (barcode: string) => {
+    if (!barcode) return;
+    setIsFetchingAPI(true);
+    try {
+      const res = await fetch(`/api/v1/proxy/upc?upc=${encodeURIComponent(barcode)}`);
+      if (!res.ok) throw new Error("API error");
+      const data = await res.json();
+      if (data && data.items && data.items.length > 0) {
+        const item = data.items[0];
+        setEditFormData((prev) => ({
+          ...prev,
+          name: item.title || prev.name,
+          brand: item.brand || prev.brand,
+          imageUrl: (item.images && item.images.length > 0) ? item.images[0] : prev.imageUrl
+        }));
+        if (item.images && item.images.length > 0) {
+          setEditImageSourceType("url");
+        }
+      } else {
+        alert("Product details not found in global database.");
+      }
+    } catch (err) {
+      console.error("Failed to fetch from UPC API:", err);
+      alert("Could not fetch product details automatically.");
+    } finally {
+      setIsFetchingAPI(false);
+    }
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -98,6 +152,7 @@ export default function InventoryPage() {
       sellingPrice: product.sellingPrice.toString(),
       lowStockThreshold: product.lowStockThreshold.toString(),
       imageUrl: product.imageUrl || "",
+      barcode: product.barcode || "",
     });
     setEditImageSourceType(product.imageUrl?.startsWith("data:") ? "file" : "url");
     setEditError("");
@@ -146,6 +201,7 @@ export default function InventoryPage() {
         sellingPrice: parseFloat(editFormData.sellingPrice),
         lowStockThreshold: threshold,
         imageUrl: editFormData.imageUrl || null,
+        barcode: editFormData.barcode || null,
       });
       setEditingProduct(null);
       loadData();
@@ -160,12 +216,21 @@ export default function InventoryPage() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Inventory</h2>
         {role === "owner" && (
-          <Link
-            href="/inventory/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-bold"
-          >
-            + Add Product
-          </Link>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowStockScanner(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold flex items-center justify-center shadow-sm"
+              title="Scan barcode to quickly find product and add stock"
+            >
+              <FaCamera className="mr-2" /> Scan to Add Stock
+            </button>
+            <Link
+              href="/inventory/new"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-bold shadow-sm"
+            >
+              + Add Product
+            </Link>
+          </div>
         )}
       </div>
 
@@ -329,14 +394,45 @@ export default function InventoryPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
-                  <CategorySelector
-                    categories={categories}
-                    selectedCategoryId={editFormData.categoryId}
-                    onChange={(catId) => setEditFormData({ ...editFormData, categoryId: catId })}
-                    onAddCategory={handleCreateCategory}
-                  />
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
+                    <CategorySelector
+                      categories={categories}
+                      selectedCategoryId={editFormData.categoryId}
+                      onChange={(catId) => setEditFormData({ ...editFormData, categoryId: catId })}
+                      onAddCategory={handleCreateCategory}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700">Barcode (Optional)</label>
+                    <div className="mt-1 flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Scan or type barcode"
+                        className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        value={editFormData.barcode}
+                        onChange={(e) => setEditFormData({ ...editFormData, barcode: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowEditScanner(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 rounded-md flex items-center justify-center transition shadow-sm"
+                        title="Scan Barcode to Auto-Fill"
+                      >
+                        <FaCamera />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fetchProductDetails(editFormData.barcode)}
+                        disabled={!editFormData.barcode || isFetchingAPI}
+                        className="bg-gray-100 border border-gray-300 hover:bg-gray-200 text-gray-700 px-3 rounded-md flex items-center justify-center transition disabled:opacity-50"
+                        title="Fetch Details from Barcode"
+                      >
+                        {isFetchingAPI ? <FaSpinner className="animate-spin text-blue-600" /> : <FaSearch />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Product Image Section */}
@@ -494,6 +590,28 @@ export default function InventoryPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {showStockScanner && (
+        <CameraScanner
+          onScanSuccess={handleStockScanSuccess}
+          onClose={() => setShowStockScanner(false)}
+        />
+      )}
+
+      {showEditScanner && (
+        <CameraScanner
+          onScanSuccess={useCallback(async (code: string) => {
+            setShowEditScanner(false);
+            if (code.length === 15 && /^\d+$/.test(code)) {
+              alert(`Scanned code ${code} is an IMEI. You cannot add initial stock when editing. Please go to the Inventory list and click "Scan to Add Stock" to add this device.`);
+            } else {
+              setEditFormData((prev) => ({ ...prev, barcode: code }));
+              await fetchProductDetails(code);
+            }
+          }, [])}
+          onClose={() => setShowEditScanner(false)}
+        />
       )}
     </div>
   );

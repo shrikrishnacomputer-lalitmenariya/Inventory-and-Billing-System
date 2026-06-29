@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { getProducts } from "@/lib/api/inventory";
 import { searchCustomer, createBill } from "@/lib/api/billing";
 import { useReactToPrint } from "react-to-print";
 import { useAuth } from "@/hooks/useAuth";
+import CameraScanner from "@/components/CameraScanner";
+import { FaCamera } from "react-icons/fa";
 
 // Indian currency to words helper
 function numberToWords(num: number): string {
@@ -103,14 +105,43 @@ export default function BillingPage() {
   // Bill metadata
   const [paymentMode, setPaymentMode] = useState("cash");
   const [discount, setDiscount] = useState("0");
+  const [sgstPercent, setSgstPercent] = useState("0");
+  const [cgstPercent, setCgstPercent] = useState("0");
+  const [igstPercent, setIgstPercent] = useState("0");
+  const [paidAmount, setPaidAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Finance states
+  const [financeProviders, setFinanceProviders] = useState<any[]>([]);
+  const [financeProviderId, setFinanceProviderId] = useState("");
+  const [emiAmount, setEmiAmount] = useState("");
+  const [financeMonths, setFinanceMonths] = useState("");
 
   // Created Bill for Print Modal
   const [createdBill, setCreatedBill] = useState<any>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
+  // Scanner State
+  const [showScanner, setShowScanner] = useState(false);
+
   const printComponentRef = useRef<HTMLDivElement>(null);
+
+  // Fetch finance providers
+  useEffect(() => {
+    const fetchFinanceProviders = async () => {
+      try {
+        const res = await fetch("/api/v1/finance/providers");
+        if (res.ok) {
+          const data = await res.json();
+          setFinanceProviders(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch finance providers", err);
+      }
+    };
+    fetchFinanceProviders();
+  }, []);
 
   // Search products
   useEffect(() => {
@@ -129,26 +160,6 @@ export default function BillingPage() {
 
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
-
-  // Handle phone changes to search customer
-  const handlePhoneChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setPhone(value);
-
-    if (value.length === 10) {
-      setIsSearchingCustomer(true);
-      try {
-        const cust = await searchCustomer(value);
-        if (cust) {
-          setCustomerName(cust.name || "");
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsSearchingCustomer(false);
-      }
-    }
-  };
 
   // Add product to cart
   const addToCart = async (product: any) => {
@@ -187,6 +198,64 @@ export default function BillingPage() {
     }
   };
 
+  // Handle Scan Result
+  const handleScanSuccess = useCallback(async (code: string) => {
+    setShowScanner(false);
+    try {
+      const res = await fetch(`/api/v1/products/scan?code=${encodeURIComponent(code)}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(errorData.error || "Failed to find product via scan");
+        return;
+      }
+      
+      const result = await res.json();
+      
+      if (result.type === "product") {
+        addToCart(result.data);
+      } else if (result.type === "imei") {
+        // Find if product already in cart
+        const product = result.data;
+        const unitId = result.unitId.toString();
+        
+        setCart((prev) => {
+          const existing = prev.find((item) => item.product.id === product.id && item.selectedUnitId === unitId);
+          if (existing) {
+            alert("This specific unit (IMEI) is already in the cart.");
+            return prev;
+          }
+          return [...prev, { product, quantity: 1, selectedUnitId: unitId }];
+        });
+      }
+    } catch (err) {
+      console.error("Scan processing error", err);
+      alert("Error processing scan result");
+    }
+  }, [addToCart]);
+
+  // Handle phone changes to search customer
+  const handlePhoneChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPhone(value);
+
+    if (value.length === 10) {
+      setIsSearchingCustomer(true);
+      try {
+        const cust = await searchCustomer(value);
+        if (cust && cust.name) {
+          // Only auto-fill the name if the user hasn't already typed something
+          setCustomerName((prev) => prev.trim() === "" ? cust.name : prev);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearchingCustomer(false);
+      }
+    }
+  };
+
+
+
   const removeFromCart = (productId: number, unitId?: string) => {
     setCart(cart.filter((item) => !(item.product.id === productId && (!unitId || item.selectedUnitId === unitId))));
   };
@@ -208,7 +277,14 @@ export default function BillingPage() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.product.sellingPrice * item.quantity, 0);
-  const totalAmount = subtotal - parseFloat(discount || "0");
+  const discountVal = parseFloat(discount || "0");
+  const taxableAmount = subtotal - discountVal;
+
+  const sgstAmt = taxableAmount * (parseFloat(sgstPercent || "0") / 100);
+  const cgstAmt = taxableAmount * (parseFloat(cgstPercent || "0") / 100);
+  const igstAmt = taxableAmount * (parseFloat(igstPercent || "0") / 100);
+
+  const totalAmount = taxableAmount + sgstAmt + cgstAmt + igstAmt;
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -223,6 +299,20 @@ export default function BillingPage() {
       setError("Customer Name is required when a Phone number is entered");
       return;
     }
+    if (paymentMode.toLowerCase() === "finance") {
+      if (!financeProviderId) {
+        setError("Please select a Finance Provider");
+        return;
+      }
+      if (!emiAmount || parseFloat(emiAmount) <= 0) {
+        setError("Please enter a valid EMI Amount");
+        return;
+      }
+      if (!financeMonths || parseInt(financeMonths) <= 0) {
+        setError("Please enter valid Months");
+        return;
+      }
+    }
     setError("");
     setIsSaving(true);
 
@@ -235,22 +325,51 @@ export default function BillingPage() {
           : undefined,
       }));
 
-      const billData = {
+      const billData: any = {
         customerName: customerName || "Guest Customer",
         customerPhone: phone || undefined,
         paymentMode,
-        discount: parseFloat(discount || "0"),
+        discount: discountVal,
+        sgstPercent: parseFloat(sgstPercent || "0"),
+        cgstPercent: parseFloat(cgstPercent || "0"),
+        igstPercent: parseFloat(igstPercent || "0"),
+        paidAmount: paidAmount === "" ? totalAmount : parseFloat(paidAmount),
         items: itemsPayload,
       };
+
+      if (paymentMode.toLowerCase() === "finance") {
+        billData.financeProviderId = financeProviderId;
+        billData.emiAmount = emiAmount;
+        billData.financeMonths = financeMonths;
+      }
 
       const bill = await createBill(billData);
       setCreatedBill(bill);
       setShowPrintModal(true);
       
-      setCart([]);
-      setPhone("");
-      setCustomerName("");
-      setDiscount("0");
+      // Auto-send WhatsApp if phone number exists
+      if (billData.customerPhone) {
+        try {
+          const { generateBillPdfBlob } = await import("@/lib/client-pdf");
+          const blob = await generateBillPdfBlob(bill);
+          const formData = new FormData();
+          formData.append("file", blob, `SKC_Invoice_${bill.billNumber}.pdf`);
+          formData.append("customerName", billData.customerName);
+          formData.append("mobileNumber", billData.customerPhone);
+          formData.append("billNumber", bill.billNumber);
+          
+          // Don't await this so it happens in the background
+          fetch(`/api/v1/bills/${bill.id}/whatsapp/upload`, {
+            method: "POST",
+            body: formData,
+          }).catch(err => console.error("Auto-whatsapp send failed", err));
+        } catch (err) {
+          console.error("Auto PDF generation failed", err);
+        }
+      }
+
+      // Don't clear form here — wait until print modal is closed
+      // so the modal can still access customerName for display
     } catch (err: any) {
       setError(err.message || "Failed to create invoice");
     } finally {
@@ -263,6 +382,22 @@ export default function BillingPage() {
     documentTitle: `SKC_Invoice_${createdBill?.billNumber || ""}`,
   });
 
+  const closePrintModal = () => {
+    setShowPrintModal(false);
+    setCreatedBill(null);
+    setCart([]);
+    setPhone("");
+    setCustomerName("");
+    setDiscount("0");
+    setPaidAmount("");
+    setSgstPercent("0");
+    setCgstPercent("0");
+    setIgstPercent("0");
+    setFinanceProviderId("");
+    setEmiAmount("");
+    setFinanceMonths("");
+  };
+
   // Shareable render invoice helper
   const renderInvoiceContent = (
     isDraft: boolean,
@@ -273,8 +408,16 @@ export default function BillingPage() {
     cartItems: any[],
     subtotalVal: number,
     discountVal: number,
-    totalVal: number
+    totalVal: number,
+    sgstPercentVal: string = "0",
+    cgstPercentVal: string = "0",
+    igstPercentVal: string = "0"
   ) => {
+    const taxableAmt = subtotalVal - discountVal;
+    const sAmt = taxableAmt * (parseFloat(sgstPercentVal || "0") / 100);
+    const cAmt = taxableAmt * (parseFloat(cgstPercentVal || "0") / 100);
+    const iAmt = taxableAmt * (parseFloat(igstPercentVal || "0") / 100);
+
     return (
       <div className="border-[3px] border-[#1b3f8b] p-4 bg-white text-black font-sans text-[11px] select-none shadow-sm rounded-sm">
         {/* Header matching original bill */}
@@ -322,12 +465,17 @@ export default function BillingPage() {
             <div className="w-14"></div>
           </div>
 
-          <div className="flex justify-between items-center border-t border-[#1b3f8b] pt-1.5 text-[9px] font-black text-white bg-[#1b3f8b] px-2 py-0.5 rounded-sm">
-            <div>WE BELIEVE IN QUALITY</div>
-            <div className="flex gap-1.5 flex-wrap">
-              <span>MOBILE</span>|<span>COMPUTER</span>|<span>AC</span>|<span>CCTV</span>|<span>LEDTV</span>|<span>REFRIGERATOR</span>|<span>WASHING MACHINE</span>
-            </div>
-          </div>
+         <div className="bg-[#1b3f8b] rounded-md py-3 px-4 flex items-center">
+  
+  <div className="bg-yellow-400 text-[#1b3f8b] font-black px-4 py-1 rounded mr-4 text-sm">
+    WE BELIEVE IN QUALITY
+  </div>
+
+  <div className="flex-1 text-center text-white text-xs font-bold tracking-wide">
+    MOBILE | COMPUTER | AC | CCTV | LED TV | REFRIGERATOR | WASHING MACHINE
+  </div>
+
+</div>
 
           <div className="flex justify-between items-center pt-1.5 text-[10px] font-black text-[#1b3f8b]">
             <div>Owner: Lalit Menariya</div>
@@ -383,9 +531,9 @@ export default function BillingPage() {
           <tbody>
             {cartItems.map((item: any, idx: number) => {
               const pName = item.product ? item.product.name : item.name;
-              const pRate = item.product ? item.product.sellingPrice : item.unitPrice;
+              const pRate = item.product ? item.product.sellingPrice : parseFloat(item.unitPrice || "0");
               const pQty = item.quantity;
-              const pTotal = item.product ? (item.product.sellingPrice * item.quantity) : item.lineTotal;
+              const pTotal = item.product ? (item.product.sellingPrice * item.quantity) : parseFloat(item.lineTotal || "0");
               const imei = item.productUnit?.imeiNumber || ((item.product?.productType === "serialized" || item.product?.productType === "electronics") && item.product.units?.find((u: any) => u.id.toString() === item.selectedUnitId)?.imeiNumber);
 
               return (
@@ -433,16 +581,8 @@ export default function BillingPage() {
 
           <div className="border border-[#1b3f8b] text-[10px]">
             <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-              <span className="font-bold text-[#1b3f8b]">Total</span>
+              <span className="font-bold text-[#1b3f8b]">Subtotal</span>
               <span className="font-bold">₹{subtotalVal}</span>
-            </div>
-            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-              <span className="font-bold text-[#1b3f8b]">CGST</span>
-              <span>-</span>
-            </div>
-            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-              <span className="font-bold text-[#1b3f8b]">SGST</span>
-              <span>-</span>
             </div>
             {discountVal > 0 && (
               <div className="flex justify-between p-1 border-b border-[#1b3f8b] text-red-600 bg-red-50/50">
@@ -450,9 +590,25 @@ export default function BillingPage() {
                 <span className="font-bold">- ₹{discountVal}</span>
               </div>
             )}
+            <div className="flex justify-between p-1 border-b border-[#1b3f8b] bg-gray-50/50">
+              <span className="font-bold text-[#1b3f8b]">Taxable Amount</span>
+              <span className="font-bold">₹{taxableAmt.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+              <span className="font-bold text-[#1b3f8b]">CGST ({cgstPercentVal}%)</span>
+              <span>₹{cAmt.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+              <span className="font-bold text-[#1b3f8b]">SGST ({sgstPercentVal}%)</span>
+              <span>₹{sAmt.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+              <span className="font-bold text-[#1b3f8b]">IGST ({igstPercentVal}%)</span>
+              <span>₹{iAmt.toFixed(2)}</span>
+            </div>
             <div className="flex justify-between p-1 font-black bg-blue-50/30 text-[#1b3f8b] text-xs">
               <span>G.Total</span>
-              <span>₹{totalVal}</span>
+              <span>₹{totalVal.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -498,7 +654,10 @@ export default function BillingPage() {
           cart,
           subtotal,
           parseFloat(discount || "0"),
-          totalAmount
+          totalAmount,
+          sgstPercent,
+          cgstPercent,
+          igstPercent
         )}
       </div>
 
@@ -516,14 +675,20 @@ export default function BillingPage() {
           <label className="block text-sm font-bold text-gray-700 mb-1">
             Search & Add Products <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
+          <div className="relative flex gap-2">
             <input
               type="text"
-              placeholder="Type brand or product name (e.g., iPhone)..."
+              placeholder="Type brand, product name, or scan barcode..."
               className="w-full border-2 border-gray-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 rounded-lg px-4 py-2 text-sm font-medium transition"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            <button
+              onClick={() => setShowScanner(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-lg font-bold flex items-center justify-center transition shadow-sm whitespace-nowrap"
+            >
+              <FaCamera className="mr-2" /> Scan
+            </button>
             {searchResults.length > 0 && (
               <div className="absolute left-0 right-0 bg-white border border-gray-200 mt-1 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
                 {searchResults.map((p) => (
@@ -667,7 +832,6 @@ export default function BillingPage() {
               }`}
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              onKeyDown={handleTextOnlyKeyDown}
             />
             {phone.trim().length > 0 && customerName.trim() === "" && (
               <span className="text-[10px] text-red-500 font-bold mt-1 block">Name is required when phone is entered</span>
@@ -679,8 +843,8 @@ export default function BillingPage() {
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Payment Mode <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {["cash", "upi", "card"].map((mode) => (
+            <div className="grid grid-cols-4 gap-2">
+              {["cash", "upi", "card", "finance"].map((mode) => (
                 <button
                   key={mode}
                   type="button"
@@ -696,6 +860,59 @@ export default function BillingPage() {
               ))}
             </div>
           </div>
+
+          {/* Conditional Finance Fields */}
+          {paymentMode === "finance" && (
+            <div className="grid grid-cols-5 gap-3 mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-gray-700 truncate">Finance Provider</label>
+                <div className="relative mt-1">
+                  <select
+                    className="peer appearance-none block w-full border-2 border-gray-300 rounded-lg py-2 pl-2 pr-6 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition cursor-pointer text-ellipsis overflow-hidden whitespace-nowrap"
+                    value={financeProviderId}
+                    onChange={(e) => {
+                      setFinanceProviderId(e.target.value);
+                      e.target.blur();
+                    }}
+                  >
+                    <option value="">Select...</option>
+                    {financeProviders.map(provider => (
+                      <option key={provider.id} value={provider.id}>{provider.name}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-500 peer-focus:rotate-90 transition-transform duration-200">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-gray-700 truncate">EMI Amount (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+                  value={emiAmount}
+                  onChange={(e) => setEmiAmount(e.target.value)}
+                  onKeyDown={(e) => handleNumberKeyDown(e, true)}
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                />
+              </div>
+              <div className="col-span-1">
+                <label className="block text-xs font-bold text-gray-700 truncate">Months</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+                  value={financeMonths}
+                  onChange={(e) => setFinanceMonths(e.target.value)}
+                  onKeyDown={(e) => handleNumberKeyDown(e, false)}
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Discount Amount */}
           <div>
@@ -713,7 +930,50 @@ export default function BillingPage() {
               onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
           </div>
+        </div>
 
+        {/* GST Tax Inputs */}
+        <div className="grid grid-cols-3 gap-4 border-t pt-4 mt-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700">SGST (%)</label>
+            <input
+              type="number" min="0" max="100"
+              className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+              value={sgstPercent} onChange={(e) => setSgstPercent(e.target.value)} onKeyDown={(e) => handleNumberKeyDown(e, true)} onWheel={(e) => (e.target as HTMLInputElement).blur()}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700">CGST (%)</label>
+            <input
+              type="number" min="0" max="100"
+              className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+              value={cgstPercent} onChange={(e) => setCgstPercent(e.target.value)} onKeyDown={(e) => handleNumberKeyDown(e, true)} onWheel={(e) => (e.target as HTMLInputElement).blur()}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700">IGST (%)</label>
+            <input
+              type="number" min="0" max="100"
+              className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+              value={igstPercent} onChange={(e) => setIgstPercent(e.target.value)} onKeyDown={(e) => handleNumberKeyDown(e, true)} onWheel={(e) => (e.target as HTMLInputElement).blur()}
+            />
+          </div>
+        </div>
+
+        {/* Amount Paid */}
+        <div className="border-t pt-4 mt-4">
+          <label className="block text-sm font-bold text-gray-700">
+            Amount Paid (₹) <span className="text-gray-400 text-xs ml-1 font-normal">(Leave empty if full payment)</span>
+          </label>
+          <input
+            type="number" min="0" max={totalAmount}
+            className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition bg-green-50"
+            placeholder={`e.g. ${totalAmount}`}
+            value={paidAmount}
+            onChange={(e) => setPaidAmount(e.target.value)}
+            onKeyDown={(e) => handleNumberKeyDown(e, true)}
+            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+          />
         </div>
 
         {/* Generate Invoice Button */}
@@ -736,7 +996,7 @@ export default function BillingPage() {
             <div className="px-6 py-4 bg-gray-50 border-b flex justify-between items-center rounded-t-lg">
               <h3 className="text-lg font-bold text-gray-900">Tax Invoice Generated Successfully</h3>
               <button
-                onClick={() => setShowPrintModal(false)}
+                onClick={closePrintModal}
                 className="text-gray-400 hover:text-gray-500 text-2xl font-semibold focus:outline-none"
               >
                 &times;
@@ -754,19 +1014,22 @@ export default function BillingPage() {
                   false,
                   createdBill.billNumber,
                   createdBill.createdAt,
-                  createdBill.customer?.name,
-                  createdBill.customer?.phone,
+                  createdBill.customer?.name || customerName || "Guest Customer",
+                  createdBill.customer?.phone || phone,
                   createdBill.billItems,
-                  createdBill.subtotal,
-                  createdBill.discount,
-                  createdBill.totalAmount
+                  parseFloat(createdBill.subtotal),
+                  parseFloat(createdBill.discount),
+                  parseFloat(createdBill.totalAmount),
+                  createdBill.sgstPercent?.toString(),
+                  createdBill.cgstPercent?.toString(),
+                  createdBill.igstPercent?.toString()
                 )}
               </div>
             </div>
 
             <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3 rounded-b-lg">
               <button
-                onClick={() => setShowPrintModal(false)}
+                onClick={closePrintModal}
                 className="bg-white border border-gray-300 rounded-md py-2 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Close
@@ -780,6 +1043,13 @@ export default function BillingPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showScanner && (
+        <CameraScanner
+          onScanSuccess={handleScanSuccess}
+          onClose={() => setShowScanner(false)}
+        />
       )}
     </div>
   );

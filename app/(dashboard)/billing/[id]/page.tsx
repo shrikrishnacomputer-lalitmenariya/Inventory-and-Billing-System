@@ -62,6 +62,8 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true);
   const [voiding, setVoiding] = useState(false);
   const [error, setError] = useState("");
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [whatsappStatus, setWhatsappStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const printComponentRef = useRef<HTMLDivElement>(null);
 
@@ -98,6 +100,47 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
     } catch (err: any) {
       setError(err.message || "Failed to void invoice");
       setVoiding(false);
+    }
+  };
+
+  const handleSendWhatsapp = async () => {
+    if (!bill) return;
+    const customerPhone = bill.customer?.phone || bill.customerPhone || "";
+    if (!customerPhone) {
+      setWhatsappStatus({ type: "error", message: "No customer phone number on this bill." });
+      return;
+    }
+    try {
+      setSendingWhatsapp(true);
+      setWhatsappStatus(null);
+
+      // Generate PDF client-side
+      const { generateBillPdfBlob } = await import("@/lib/client-pdf");
+      const blob = await generateBillPdfBlob(bill);
+
+      // Upload PDF and trigger WhatsApp delivery
+      const formData = new FormData();
+      formData.append("file", blob, `SKC_Invoice_${bill.billNumber}.pdf`);
+      formData.append("customerName", bill.customer?.name || bill.customerName || "Customer");
+      formData.append("mobileNumber", customerPhone);
+      formData.append("billNumber", bill.billNumber);
+
+      const res = await fetch(`/api/v1/bills/${bill.id}/whatsapp/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWhatsappStatus({ type: "success", message: `Invoice sent to ${customerPhone} via WhatsApp!` });
+      } else {
+        setWhatsappStatus({ type: "error", message: data.error || "Failed to send WhatsApp message." });
+      }
+    } catch (err: any) {
+      console.error("WhatsApp send error:", err);
+      setWhatsappStatus({ type: "error", message: err.message || "Failed to send WhatsApp message." });
+    } finally {
+      setSendingWhatsapp(false);
     }
   };
 
@@ -141,6 +184,22 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
         </div>
 
         <div className="flex gap-2">
+          {bill.status !== "voided" && (
+            <button
+              onClick={handleSendWhatsapp}
+              disabled={sendingWhatsapp}
+              className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded text-sm disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {sendingWhatsapp ? (
+                <>
+                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                  Sending...
+                </>
+              ) : (
+                "📲 Send via WhatsApp"
+              )}
+            </button>
+          )}
           {role === "owner" && bill.status !== "voided" && isSameDay() && (
             <button
               onClick={handleVoid}
@@ -160,6 +219,16 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {error && <div className="text-red-600 bg-red-50 p-3 rounded text-sm">{error}</div>}
+
+      {whatsappStatus && (
+        <div className={`p-3 rounded text-sm font-semibold ${
+          whatsappStatus.type === "success"
+            ? "bg-green-50 text-green-700 border border-green-200"
+            : "bg-red-50 text-red-700 border border-red-200"
+        }`}>
+          {whatsappStatus.type === "success" ? "✅" : "❌"} {whatsappStatus.message}
+        </div>
+      )}
 
       {/* Invoice sheet preview */}
       <div className="bg-white p-8 rounded-lg shadow overflow-x-auto flex justify-center">
@@ -218,12 +287,17 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
               <div className="w-14"></div>
             </div>
 
-            <div className="flex justify-between items-center border-t border-[#1b3f8b] pt-1.5 text-[9px] font-black text-white bg-[#1b3f8b] px-2 py-0.5 rounded-sm">
-              <div>WE BELIEVE IN QUALITY</div>
-              <div className="flex gap-1.5 flex-wrap">
-                <span>MOBILE</span>|<span>COMPUTER</span>|<span>AC</span>|<span>CCTV</span>|<span>LEDTV</span>|<span>REFRIGERATOR</span>|<span>WASHING MACHINE</span>
-              </div>
-            </div>
+            <div className="bg-[#1b3f8b] rounded-md py-3 px-4 flex items-center">
+  
+  <div className="bg-yellow-400 text-[#1b3f8b] font-black px-4 py-1 rounded mr-4 text-sm">
+    WE BELIEVE IN QUALITY
+  </div>
+
+  <div className="flex-1 text-center text-white text-xs font-bold tracking-wide">
+    MOBILE | COMPUTER | AC | CCTV | LED TV | REFRIGERATOR | WASHING MACHINE
+  </div>
+
+</div>
 
             <div className="flex justify-between items-center pt-1.5 text-[10px] font-black text-[#1b3f8b]">
               <div>Owner: Lalit Menariya</div>
@@ -321,16 +395,8 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
 
             <div className="border border-[#1b3f8b] text-[10px]">
               <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-                <span className="font-bold text-[#1b3f8b]">Total</span>
+                <span className="font-bold text-[#1b3f8b]">Subtotal</span>
                 <span className="font-bold">₹{bill.subtotal}</span>
-              </div>
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-                <span className="font-bold text-[#1b3f8b]">CGST</span>
-                <span>-</span>
-              </div>
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-                <span className="font-bold text-[#1b3f8b]">SGST</span>
-                <span>-</span>
               </div>
               {bill.discount > 0 && (
                 <div className="flex justify-between p-1 border-b border-[#1b3f8b] text-red-600 bg-red-50/50">
@@ -338,6 +404,22 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
                   <span className="font-bold">- ₹{bill.discount}</span>
                 </div>
               )}
+              <div className="flex justify-between p-1 border-b border-[#1b3f8b] bg-gray-50/50">
+                <span className="font-bold text-[#1b3f8b]">Taxable Amount</span>
+                <span className="font-bold">₹{(Number(bill.subtotal) - Number(bill.discount)).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+                <span className="font-bold text-[#1b3f8b]">CGST ({bill.cgstPercent || 0}%)</span>
+                <span>₹{Number(bill.cgstAmount || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+                <span className="font-bold text-[#1b3f8b]">SGST ({bill.sgstPercent || 0}%)</span>
+                <span>₹{Number(bill.sgstAmount || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+                <span className="font-bold text-[#1b3f8b]">IGST ({bill.igstPercent || 0}%)</span>
+                <span>₹{Number(bill.igstAmount || 0).toFixed(2)}</span>
+              </div>
               <div className="flex justify-between p-1 font-black bg-blue-50/30 text-[#1b3f8b] text-xs">
                 <span>G.Total</span>
                 <span>₹{bill.totalAmount}</span>

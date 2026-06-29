@@ -17,6 +17,7 @@ export default function NotificationBell() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [dismissedKeys, setDismissedKeys] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,8 +28,9 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    // Calculate unread count based on localStorage
+    // Read from localStorage only on client mount / update
     const dismissed = getDismissed();
+    setDismissedKeys(dismissed);
     const activeUnread = alerts.filter(
       (alert) => !dismissed.includes(`${alert.id}-${alert.quantity}`)
     );
@@ -72,11 +74,13 @@ export default function NotificationBell() {
     try {
       const currentKeys = alerts.map((alert) => `${alert.id}-${alert.quantity}`);
       localStorage.setItem("dismissed_alerts", JSON.stringify(currentKeys));
+      setDismissedKeys(currentKeys);
       setUnreadCount(0);
     } catch (err) {
       console.error(err);
     }
   };
+
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -136,7 +140,7 @@ export default function NotificationBell() {
                 <div
                   key={alert.id}
                   className={`px-4 py-3 flex flex-col gap-1 hover:bg-gray-50 transition ${
-                    getDismissed().includes(`${alert.id}-${alert.quantity}`) ? "opacity-60" : ""
+                    dismissedKeys.includes(`${alert.id}-${alert.quantity}`) ? "opacity-60" : ""
                   }`}
                 >
                   <div className="flex justify-between items-center">

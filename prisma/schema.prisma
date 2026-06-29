@@ -11,12 +11,14 @@ model User {
   id               Int                @id @default(autoincrement())
   name             String             
   username         String             @unique 
+  email            String?            @unique
   passwordHash     String             @map("password_hash") 
   role             String             
   isActive         Boolean            @default(true) @map("is_active")
   createdAt        DateTime           @default(now()) @map("created_at")
   stockInRecords   StockInRecord[]
   bills            Bill[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }
@@ -37,6 +39,7 @@ model Product {
   id                  Int                @id @default(autoincrement())
   categoryId          Int                @map("category_id")
   name                String             
+  barcode             String?            @unique
   brand               String?            
   productType         String             @map("product_type") 
   costPrice           Decimal            @map("cost_price") 
@@ -101,14 +104,26 @@ model Bill {
   createdByUserId  Int         @map("created_by_user_id")
   subtotal         Decimal     
   discount         Decimal     @default(0) 
+  sgstPercent      Decimal     @default(0) @map("sgst_percent")
+  cgstPercent      Decimal     @default(0) @map("cgst_percent")
+  igstPercent      Decimal     @default(0) @map("igst_percent")
+  sgstAmount       Decimal     @default(0) @map("sgst_amount")
+  cgstAmount       Decimal     @default(0) @map("cgst_amount")
+  igstAmount       Decimal     @default(0) @map("igst_amount")
   totalAmount      Decimal     @map("total_amount") 
+  paidAmount       Decimal     @default(0) @map("paid_amount")
+  dueAmount        Decimal     @default(0) @map("due_amount")
+  paymentStatus    String      @default("PAID") @map("payment_status")
   paymentMode      String      @map("payment_mode") 
   status           String      
+  whatsappStatus   String?     @map("whatsapp_status") 
+  whatsappSentAt   DateTime?   @map("whatsapp_sent_at")
   createdAt        DateTime    @default(now()) @map("created_at")
 
   customer         Customer?   @relation(fields: [customerId], references: [id])
   user             User        @relation(fields: [createdByUserId], references: [id])
   billItems        BillItem[]
+  financeRecord    FinanceRecord?
 
   @@map("bills")
 }
@@ -127,4 +142,77 @@ model BillItem {
   productUnit     ProductUnit? @relation(fields: [productUnitId], references: [id])
 
   @@map("bill_items")
+}
+
+model FinanceProvider {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  records   FinanceRecord[]
+
+  @@map("finance_providers")
+}
+
+model FinanceRecord {
+  id                Int      @id @default(autoincrement())
+  billId            Int      @unique @map("bill_id")
+  financeProviderId Int      @map("finance_provider_id")
+  emiAmount         Decimal  @map("emi_amount")
+  months            Int?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  bill              Bill            @relation(fields: [billId], references: [id])
+  financeProvider   FinanceProvider @relation(fields: [financeProviderId], references: [id])
+
+  @@map("finance_records")
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("password_reset_tokens")
+}
+
+model WhatsappSettings {
+  id                   Int     @id @default(autoincrement())
+  ownerPhone           String  @default("6375591682") @map("owner_phone")
+  status               String  @default("disconnected") @map("status")
+  qrCode               String? @map("qr_code")
+  simulateFailures     Boolean @default(false) @map("simulate_failures")
+  simulateSessionError Boolean @default(false) @map("simulate_session_error")
+
+  @@map("whatsapp_settings")
+}
+
+model WhatsappDelivery {
+  id            Int       @id @default(autoincrement())
+  billId        Int       @map("bill_id")
+  billNumber    String    @map("bill_number")
+  customerName  String    @map("customer_name")
+  mobileNumber  String    @map("mobile_number")
+  pdfPath       String    @map("pdf_path")
+  status        String    @default("pending")
+  failureReason String?   @map("failure_reason")
+  sentAt        DateTime? @map("sent_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("whatsapp_deliveries")
+}
+
+model WhatsappAuditLog {
+  id         Int      @id @default(autoincrement())
+  billId     Int      @map("bill_id")
+  billNumber String   @map("bill_number")
+  event      String
+  details    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("whatsapp_audit_logs")
 }

@@ -58,6 +58,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       lowStockThreshold,
       imageUrl,
       isActive,
+      barcode,
     } = body;
 
     const updatedProduct = await prisma.product.update({
@@ -72,6 +73,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         lowStockThreshold: lowStockThreshold ? parseInt(lowStockThreshold) : undefined,
         imageUrl,
         isActive,
+        barcode: barcode || null,
       },
     });
 

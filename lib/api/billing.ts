@@ -14,6 +14,9 @@ export async function createBill(data: {
     quantity: number;
     productUnitId?: number;
   }>;
+  financeProviderId?: string | number;
+  emiAmount?: string | number;
+  financeMonths?: string | number;
 }) {
   const res = await fetch("/api/v1/bills", {
     method: "POST",

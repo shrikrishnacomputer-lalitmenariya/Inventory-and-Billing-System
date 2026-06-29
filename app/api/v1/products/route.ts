@@ -79,6 +79,7 @@ export async function POST(req: Request) {
       initialQuantity,
       imeis,
       imageUrl,
+      barcode,
     } = body;
 
     if (!categoryId || !name || !productType || !costPrice || !sellingPrice) {
@@ -97,6 +98,7 @@ export async function POST(req: Request) {
           sellingPrice: parseFloat(sellingPrice),
           lowStockThreshold: parseInt(lowStockThreshold) || 5,
           imageUrl,
+          barcode: barcode || null,
           quantityInStock: 0,
         },
       });

@@ -53,20 +53,69 @@ export default function BillingHistoryPage() {
   const [bills, setBills] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sendingWhatsappId, setSendingWhatsappId] = useState<number | null>(null);
 
   useEffect(() => {
     loadBills();
   }, [search]);
 
-  const loadBills = async () => {
+  // Polling for real-time WhatsApp status updates
+  useEffect(() => {
+    const hasPending = bills.some((b) => b.whatsappStatus === "pending");
+    if (!hasPending) return;
+
+    const interval = setInterval(() => {
+      loadBills(true);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [bills, search]);
+
+  const loadBills = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await getBills(search);
       setBills(data);
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const handleSendWhatsapp = async (bill: any) => {
+    const customerPhone = bill.customer?.phone || bill.customerPhone || "";
+    if (!customerPhone) {
+      alert("No customer phone number attached to this bill.");
+      return;
+    }
+    try {
+      setSendingWhatsappId(bill.id);
+      const { generateBillPdfBlob } = await import("@/lib/client-pdf");
+      const blob = await generateBillPdfBlob(bill);
+
+      const formData = new FormData();
+      formData.append("file", blob, `SKC_Invoice_${bill.billNumber}.pdf`);
+      formData.append("customerName", bill.customer?.name || "Customer");
+      formData.append("mobileNumber", customerPhone);
+      formData.append("billNumber", bill.billNumber);
+
+      const res = await fetch(`/api/v1/bills/${bill.id}/whatsapp/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Failed to send WhatsApp message");
+      }
+      
+      await loadBills(true); // Refresh list silently to get updated status
+    } catch (err: any) {
+      console.error("WhatsApp send error:", err);
+      alert(err.message || "Failed to send WhatsApp message");
+    } finally {
+      setSendingWhatsappId(null);
     }
   };
 
@@ -179,11 +228,45 @@ export default function BillingHistoryPage() {
               <div style="width: 56px;"></div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #1b3f8b; padding-top: 6px; font-size: 9px; font-weight: 900; color: white; background-color: #1b3f8b; padding: 2px 6px; border-radius: 2px;">
-              <div>WE BELIEVE IN QUALITY</div>
-              <div style="display: flex; gap: 6px;">
-                <span>MOBILE</span>|<span>COMPUTER</span>|<span>AC</span>|<span>CCTV</span>|<span>LEDTV</span>|<span>REFRIGERATOR</span>|<span>WASHING MACHINE</span>
+            // ====================Banner===============================
+            <div style="
+              background-color: #1b3f8b;
+              border-radius: 4px;
+              padding: 8px 12px;
+              margin-top: 6px;
+              display: flex;
+              align-items: center;
+            ">
+
+              <!-- Highlighted Quote -->
+              <div style="
+                background-color: #facc15;
+                color: #1b3f8b;
+                font-size: 10px;
+                font-weight: 900;
+                height: 28px;
+                padding: 0 14px;
+                border-radius: 4px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                WE BELIEVE IN QUALITY
               </div>
+
+              <!-- Categories -->
+              <div style="
+                flex: 1;
+                text-align: center;
+                color: #ffffff;
+                font-size: 10px;
+                font-weight: 800;
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+              ">
+                MOBILE | COMPUTER | AC | CCTV | LED TV | REFRIGERATOR | WASHING MACHINE
+              </div>
+
             </div>
 
             <div style="display: flex; justify-content: space-between; border-top: 1px solid #1b3f8b; padding-top: 6px; margin-top: 6px; font-size: 10px; font-weight: 900; color: #1b3f8b;">
@@ -251,16 +334,8 @@ export default function BillingHistoryPage() {
 
             <div style="border: 1px solid #1b3f8b; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b;">
-                <span style="font-weight: bold; color: #1b3f8b;">Total</span>
+                <span style="font-weight: bold; color: #1b3f8b;">Subtotal</span>
                 <span style="font-weight: bold;">₹${bill.subtotal}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b;">
-                <span style="font-weight: bold; color: #1b3f8b;">CGST</span>
-                <span>-</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b;">
-                <span style="font-weight: bold; color: #1b3f8b;">SGST</span>
-                <span>-</span>
               </div>
               ${bill.discount > 0 ? `
                 <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b; color: red; background-color: rgba(239, 68, 68, 0.05);">
@@ -268,6 +343,22 @@ export default function BillingHistoryPage() {
                   <span style="font-weight: bold;">- ₹${bill.discount}</span>
                 </div>
               ` : ""}
+              <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b; background-color: #f9fafb;">
+                <span style="font-weight: bold; color: #1b3f8b;">Taxable Amount</span>
+                <span style="font-weight: bold;">₹${(Number(bill.subtotal) - Number(bill.discount)).toFixed(2)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b;">
+                <span style="font-weight: bold; color: #1b3f8b;">CGST (${bill.cgstPercent || 0}%)</span>
+                <span>₹${Number(bill.cgstAmount || 0).toFixed(2)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b;">
+                <span style="font-weight: bold; color: #1b3f8b;">SGST (${bill.sgstPercent || 0}%)</span>
+                <span>₹${Number(bill.sgstAmount || 0).toFixed(2)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b;">
+                <span style="font-weight: bold; color: #1b3f8b;">IGST (${bill.igstPercent || 0}%)</span>
+                <span>₹${Number(bill.igstAmount || 0).toFixed(2)}</span>
+              </div>
               <div style="display: flex; justify-content: space-between; padding: 6px; font-weight: 900; background-color: rgba(27, 63, 139, 0.05); color: #1b3f8b; font-size: 12px;">
                 <span>G.Total</span>
                 <span>₹${bill.totalAmount}</span>
@@ -365,6 +456,7 @@ export default function BillingHistoryPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WhatsApp</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -396,7 +488,43 @@ export default function BillingHistoryPage() {
                       {bill.status}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {bill.whatsappStatus ? (
+                      <div>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          bill.whatsappStatus === "sent" 
+                            ? "bg-green-100 text-green-800" 
+                            : bill.whatsappStatus === "failed" 
+                              ? "bg-red-100 text-red-800" 
+                              : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {bill.whatsappStatus}
+                        </span>
+                        {bill.whatsappSentAt && bill.whatsappStatus === "sent" && (
+                          <div className="text-[10px] text-gray-500 mt-1">
+                            {new Date(bill.whatsappSentAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <button
+                      onClick={() => handleSendWhatsapp(bill)}
+                      disabled={sendingWhatsappId === bill.id || bill.status === "voided"}
+                      className="inline-flex items-center justify-center p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-800 transition-colors disabled:opacity-50"
+                      title="Send via WhatsApp"
+                    >
+                      {sendingWhatsappId === bill.id ? (
+                        <div className="w-4.5 h-4.5 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                          <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.004-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                        </svg>
+                      )}
+                    </button>
                     <Link
                       href={`/billing/${bill.id}`}
                       className="inline-flex items-center justify-center p-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors"
@@ -421,7 +549,7 @@ export default function BillingHistoryPage() {
               ))}
               {bills.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                     No transactions found.
                   </td>
                 </tr>
