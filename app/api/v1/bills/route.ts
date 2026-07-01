@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     let { 
       customerName, customerPhone, paymentMode, discount = 0, items,
-      sgstPercent = 0, cgstPercent = 0, igstPercent = 0, paidAmount,
+      sgstPercent = 0, cgstPercent = 0, paidAmount,
       financeProviderId, emiAmount, financeMonths
     } = body;
 
@@ -194,9 +194,8 @@ export async function POST(req: Request) {
 
       const sgstAmt = taxableAmount * (parseFloat(sgstPercent) / 100);
       const cgstAmt = taxableAmount * (parseFloat(cgstPercent) / 100);
-      const igstAmt = taxableAmount * (parseFloat(igstPercent) / 100);
 
-      const totalAmount = taxableAmount + sgstAmt + cgstAmt + igstAmt;
+      const totalAmount = taxableAmount + sgstAmt + cgstAmt;
 
       const actualPaid = paidAmount !== undefined ? parseFloat(paidAmount) : totalAmount;
       const dueAmount = totalAmount - actualPaid;
@@ -211,10 +210,8 @@ export async function POST(req: Request) {
         discount: discountVal,
         sgstPercent: parseFloat(sgstPercent) || 0,
         cgstPercent: parseFloat(cgstPercent) || 0,
-        igstPercent: parseFloat(igstPercent) || 0,
         sgstAmount: sgstAmt,
         cgstAmount: cgstAmt,
-        igstAmount: igstAmt,
         totalAmount,
         paidAmount: actualPaid,
         dueAmount: dueAmount,

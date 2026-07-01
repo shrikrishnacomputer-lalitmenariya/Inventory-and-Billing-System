@@ -107,7 +107,6 @@ export default function BillingPage() {
   const [discount, setDiscount] = useState("0");
   const [sgstPercent, setSgstPercent] = useState("0");
   const [cgstPercent, setCgstPercent] = useState("0");
-  const [igstPercent, setIgstPercent] = useState("0");
   const [paidAmount, setPaidAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -282,9 +281,8 @@ export default function BillingPage() {
 
   const sgstAmt = taxableAmount * (parseFloat(sgstPercent || "0") / 100);
   const cgstAmt = taxableAmount * (parseFloat(cgstPercent || "0") / 100);
-  const igstAmt = taxableAmount * (parseFloat(igstPercent || "0") / 100);
 
-  const totalAmount = taxableAmount + sgstAmt + cgstAmt + igstAmt;
+  const totalAmount = taxableAmount + sgstAmt + cgstAmt;
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -332,7 +330,6 @@ export default function BillingPage() {
         discount: discountVal,
         sgstPercent: parseFloat(sgstPercent || "0"),
         cgstPercent: parseFloat(cgstPercent || "0"),
-        igstPercent: parseFloat(igstPercent || "0"),
         paidAmount: paidAmount === "" ? totalAmount : parseFloat(paidAmount),
         items: itemsPayload,
       };
@@ -392,7 +389,6 @@ export default function BillingPage() {
     setPaidAmount("");
     setSgstPercent("0");
     setCgstPercent("0");
-    setIgstPercent("0");
     setFinanceProviderId("");
     setEmiAmount("");
     setFinanceMonths("");
@@ -410,13 +406,11 @@ export default function BillingPage() {
     discountVal: number,
     totalVal: number,
     sgstPercentVal: string = "0",
-    cgstPercentVal: string = "0",
-    igstPercentVal: string = "0"
+    cgstPercentVal: string = "0"
   ) => {
     const taxableAmt = subtotalVal - discountVal;
     const sAmt = taxableAmt * (parseFloat(sgstPercentVal || "0") / 100);
     const cAmt = taxableAmt * (parseFloat(cgstPercentVal || "0") / 100);
-    const iAmt = taxableAmt * (parseFloat(igstPercentVal || "0") / 100);
 
     return (
       <div className="border-[3px] border-[#1b3f8b] p-4 bg-white text-black font-sans text-[11px] select-none shadow-sm rounded-sm">
@@ -436,18 +430,7 @@ export default function BillingPage() {
           <div className="flex items-center justify-between gap-4 mb-2">
             {/* Logo icon of Lord Krishna flute/peacock feather */}
             <div className="flex-shrink-0">
-              <svg viewBox="0 0 64 64" className="w-14 h-14 text-[#1b3f8b]" stroke="currentColor" strokeWidth="1.5" fill="none">
-                <path d="M30 38 C32 30, 38 18, 48 10 C54 18, 52 30, 42 36 C38 38, 34 39, 30 38 Z" fill="#1b3f8b" fillOpacity="0.2" />
-                <path d="M34 34 C36 28, 40 20, 46 15 C50 20, 48 28, 42 32 C38 34, 36 34, 34 34 Z" fill="#1b3f8b" fillOpacity="0.5" />
-                <path d="M37 31 C38 27, 41 23, 44 20 C46 23, 44 27, 41 28 Z" fill="#1b3f8b" />
-                <path d="M25 42 C22 32, 12 20, 6 20" />
-                <line x1="4" y1="58" x2="60" y2="22" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="14" cy="52" r="1.5" fill="currentColor" />
-                <circle cx="22" cy="47" r="1.5" fill="currentColor" />
-                <circle cx="30" cy="42" r="1.5" fill="currentColor" />
-                <circle cx="38" cy="37" r="1.5" fill="currentColor" />
-                <circle cx="46" cy="32" r="1.5" fill="currentColor" />
-              </svg>
+              <img src="/shreekrishna.jpg" alt="Logo" className="w-16 h-16 object-contain rounded-md" />
             </div>
 
             <div className="text-center flex-1">
@@ -602,10 +585,6 @@ export default function BillingPage() {
               <span className="font-bold text-[#1b3f8b]">SGST ({sgstPercentVal}%)</span>
               <span>₹{sAmt.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-              <span className="font-bold text-[#1b3f8b]">IGST ({igstPercentVal}%)</span>
-              <span>₹{iAmt.toFixed(2)}</span>
-            </div>
             <div className="flex justify-between p-1 font-black bg-blue-50/30 text-[#1b3f8b] text-xs">
               <span>G.Total</span>
               <span>₹{totalVal.toFixed(2)}</span>
@@ -656,8 +635,7 @@ export default function BillingPage() {
           parseFloat(discount || "0"),
           totalAmount,
           sgstPercent,
-          cgstPercent,
-          igstPercent
+          cgstPercent
         )}
       </div>
 
@@ -933,7 +911,7 @@ export default function BillingPage() {
         </div>
 
         {/* GST Tax Inputs */}
-        <div className="grid grid-cols-3 gap-4 border-t pt-4 mt-4">
+        <div className="grid grid-cols-2 gap-4 border-t pt-4 mt-4">
           <div>
             <label className="block text-sm font-bold text-gray-700">SGST (%)</label>
             <input
@@ -943,19 +921,11 @@ export default function BillingPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700">CGST (%)</label>
+            <label className="block text-sm font-bold  text-gray-700">CGST (%)</label>
             <input
               type="number" min="0" max="100"
               className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
               value={cgstPercent} onChange={(e) => setCgstPercent(e.target.value)} onKeyDown={(e) => handleNumberKeyDown(e, true)} onWheel={(e) => (e.target as HTMLInputElement).blur()}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700">IGST (%)</label>
-            <input
-              type="number" min="0" max="100"
-              className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
-              value={igstPercent} onChange={(e) => setIgstPercent(e.target.value)} onKeyDown={(e) => handleNumberKeyDown(e, true)} onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
           </div>
         </div>
@@ -1021,8 +991,7 @@ export default function BillingPage() {
                   parseFloat(createdBill.discount),
                   parseFloat(createdBill.totalAmount),
                   createdBill.sgstPercent?.toString(),
-                  createdBill.cgstPercent?.toString(),
-                  createdBill.igstPercent?.toString()
+                  createdBill.cgstPercent?.toString()
                 )}
               </div>
             </div>

@@ -31,23 +31,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+    <div 
+      className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans bg-no-repeat"
+      style={{ backgroundImage: "url('/bg1.jpg')", backgroundSize: "100vw 100vh" }}
+    >
+      <div className="max-w-md w-full space-y-8 glass-card p-10 z-10">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-2 text-center text-3xl font-medium text-white tracking-wide">
             Shree Krishna Computer
           </h2>
-          <p className="mt-1 text-center text-xs text-gray-500 font-semibold uppercase tracking-wider">
+          <p className="mt-3 text-center text-xs text-white/60 font-semibold uppercase tracking-widest">
             Owner: Lalit Menariya
           </p>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your account
+          <p className="mt-6 text-center text-xl text-white/90 font-light">
+            Welcome Back, Owner
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="space-y-5">
             <div>
-              <label htmlFor="username" className="sr-only">
+              <label htmlFor="username" className="block text-sm font-light text-white/80 mb-2">
                 Username
               </label>
               <input
@@ -55,14 +58,14 @@ export default function LoginPage() {
                 name="username"
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Username"
+                className="appearance-none block w-full px-4 py-3 bg-white/5 border border-white/30 placeholder-white/40 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/10 transition-all sm:text-sm shadow-inner"
+                placeholder="Enter your username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="block text-sm font-light text-white/80 mb-2">
                 Password
               </label>
               <input
@@ -70,8 +73,8 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="appearance-none block w-full px-4 py-3 bg-white/5 border border-white/30 placeholder-white/40 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:bg-white/10 transition-all sm:text-sm shadow-inner"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -84,10 +87,10 @@ export default function LoginPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-start mt-2">
             <div className="text-sm">
-              <a href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                Forgot your password?
+              <a href="/forgot-password" className="font-light text-white/70 hover:text-white transition-colors">
+                Forget Password ?
               </a>
             </div>
           </div>
@@ -96,9 +99,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="group relative w-full flex justify-center py-3.5 px-4 mt-4 border border-white/20 text-lg font-medium rounded-xl text-white bg-gradient-to-r from-[#9b66ff]/80 to-[#7848ff]/80 hover:from-[#9b66ff] hover:to-[#7848ff] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#2d1b54] focus:ring-purple-400 disabled:opacity-50 transition-all shadow-[0_4px_14px_0_rgba(120,72,255,0.39)]"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "Logging in..." : "Login"}
             </button>
           </div>
         </form>

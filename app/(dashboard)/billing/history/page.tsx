@@ -200,18 +200,7 @@ export default function BillingHistoryPage() {
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px;">
               <!-- Logo icon of Lord Krishna flute/peacock feather -->
               <div style="flex-shrink: 0;">
-                <svg viewBox="0 0 64 64" style="width: 56px; height: 56px; color: #1b3f8b;" stroke="currentColor" stroke-width="1.5" fill="none">
-                  <path d="M30 38 C32 30, 38 18, 48 10 C54 18, 52 30, 42 36 C38 38, 34 39, 30 38 Z" fill="#1b3f8b" fill-opacity="0.2" />
-                  <path d="M34 34 C36 28, 40 20, 46 15 C50 20, 48 28, 42 32 C38 34, 36 34, 34 34 Z" fill="#1b3f8b" fill-opacity="0.5" />
-                  <path d="M37 31 C38 27, 41 23, 44 20 C46 23, 44 27, 41 28 Z" fill="#1b3f8b" />
-                  <path d="M25 42 C22 32, 12 20, 6 20" />
-                  <line x1="4" y1="58" x2="60" y2="22" stroke-width="2" stroke-linecap="round" />
-                  <circle cx="14" cy="52" r="1.5" fill="currentColor" />
-                  <circle cx="22" cy="47" r="1.5" fill="currentColor" />
-                  <circle cx="30" cy="42" r="1.5" fill="currentColor" />
-                  <circle cx="38" cy="37" r="1.5" fill="currentColor" />
-                  <circle cx="46" cy="32" r="1.5" fill="currentColor" />
-                </svg>
+                <img src="/shreekrishnalogo1.jpg" alt="Logo" style="width: 64px; height: 64px; object-fit: contain; border-radius: 6px;" />
               </div>
 
               <div style="text-align: center; flex: 1;">
@@ -354,10 +343,6 @@ export default function BillingHistoryPage() {
               <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b;">
                 <span style="font-weight: bold; color: #1b3f8b;">SGST (${bill.sgstPercent || 0}%)</span>
                 <span>₹${Number(bill.sgstAmount || 0).toFixed(2)}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid #1b3f8b;">
-                <span style="font-weight: bold; color: #1b3f8b;">IGST (${bill.igstPercent || 0}%)</span>
-                <span>₹${Number(bill.igstAmount || 0).toFixed(2)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; padding: 6px; font-weight: 900; background-color: rgba(27, 63, 139, 0.05); color: #1b3f8b; font-size: 12px;">
                 <span>G.Total</span>

@@ -115,11 +115,9 @@ export async function generateBillPdfBlob(bill: any): Promise<Blob> {
 
   const sgstPercent = Number(bill.sgstPercent || 0);
   const cgstPercent = Number(bill.cgstPercent || 0);
-  const igstPercent = Number(bill.igstPercent || 0);
   
   const sgstAmount = Number(bill.sgstAmount || 0).toFixed(2);
   const cgstAmount = Number(bill.cgstAmount || 0).toFixed(2);
-  const igstAmount = Number(bill.igstAmount || 0).toFixed(2);
 
   invoiceEl.innerHTML = `
     <div style="border: 3px solid ${C.navy}; background: ${C.white}; box-sizing: border-box; width: 100%;">
@@ -148,18 +146,7 @@ export async function generateBillPdfBlob(bill: any): Promise<Blob> {
         <!-- Logo + Business Name -->
         <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
           <div style="flex-shrink: 0;">
-            <svg viewBox="0 0 64 64" style="width: 52px; height: 52px; color: ${C.navy};" stroke="currentColor" stroke-width="1.5" fill="none">
-              <path d="M30 38 C32 30, 38 18, 48 10 C54 18, 52 30, 42 36 C38 38, 34 39, 30 38 Z" fill="${C.navy}" fill-opacity="0.2" />
-              <path d="M34 34 C36 28, 40 20, 46 15 C50 20, 48 28, 42 32 C38 34, 36 34, 34 34 Z" fill="${C.navy}" fill-opacity="0.5" />
-              <path d="M37 31 C38 27, 41 23, 44 20 C46 23, 44 27, 41 28 Z" fill="${C.navy}" />
-              <path d="M25 42 C22 32, 12 20, 6 20" />
-              <line x1="4" y1="58" x2="60" y2="22" stroke-width="2" stroke-linecap="round" />
-              <circle cx="14" cy="52" r="1.5" fill="currentColor" />
-              <circle cx="22" cy="47" r="1.5" fill="currentColor" />
-              <circle cx="30" cy="42" r="1.5" fill="currentColor" />
-              <circle cx="38" cy="37" r="1.5" fill="currentColor" />
-              <circle cx="46" cy="32" r="1.5" fill="currentColor" />
-            </svg>
+            <img src="/shreekrishnalogo1.jpg" alt="Logo" style="width: 52px; height: 52px; object-fit: contain; border-radius: 6px;" />
           </div>
           <div style="text-align: center; flex: 1;">
             <h1 style="margin: 0; font-size: 26px; font-weight: 900; text-transform: uppercase; color: ${C.navy}; letter-spacing: 1px;">
@@ -318,10 +305,6 @@ export async function generateBillPdfBlob(bill: any): Promise<Blob> {
             <tr style="border-bottom: 1.5px solid ${C.navy};">
               <td style="padding: 7px 14px; font-weight: 700; color: ${C.navy};">SGST (${sgstPercent}%)</td>
               <td style="padding: 7px 14px; text-align: right; color: ${C.text};">&#8377;${sgstAmount}</td>
-            </tr>
-            <tr style="border-bottom: 1.5px solid ${C.navy};">
-              <td style="padding: 7px 14px; font-weight: 700; color: ${C.navy};">IGST (${igstPercent}%)</td>
-              <td style="padding: 7px 14px; text-align: right; color: ${C.text};">&#8377;${igstAmount}</td>
             </tr>
             <tr style="background: ${C.navyLight};">
               <td style="padding: 9px 14px; font-weight: 900; color: ${C.navy}; font-size: 13px;">G.Total</td>
