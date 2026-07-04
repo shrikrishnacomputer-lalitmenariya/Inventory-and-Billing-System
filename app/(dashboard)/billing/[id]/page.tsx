@@ -258,18 +258,7 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
             <div className="flex items-center justify-between gap-4 mb-2">
               {/* Logo icon of Lord Krishna flute/peacock feather */}
               <div className="flex-shrink-0">
-                <svg viewBox="0 0 64 64" className="w-14 h-14 text-[#1b3f8b]" stroke="currentColor" strokeWidth="1.5" fill="none">
-                  <path d="M30 38 C32 30, 38 18, 48 10 C54 18, 52 30, 42 36 C38 38, 34 39, 30 38 Z" fill="#1b3f8b" fillOpacity="0.2" />
-                  <path d="M34 34 C36 28, 40 20, 46 15 C50 20, 48 28, 42 32 C38 34, 36 34, 34 34 Z" fill="#1b3f8b" fillOpacity="0.5" />
-                  <path d="M37 31 C38 27, 41 23, 44 20 C46 23, 44 27, 41 28 Z" fill="#1b3f8b" />
-                  <path d="M25 42 C22 32, 12 20, 6 20" />
-                  <line x1="4" y1="58" x2="60" y2="22" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="14" cy="52" r="1.5" fill="currentColor" />
-                  <circle cx="22" cy="47" r="1.5" fill="currentColor" />
-                  <circle cx="30" cy="42" r="1.5" fill="currentColor" />
-                  <circle cx="38" cy="37" r="1.5" fill="currentColor" />
-                  <circle cx="46" cy="32" r="1.5" fill="currentColor" />
-                </svg>
+                <img src="/shreekrishnalogo1.jpg" alt="Logo" className="w-16 h-16 object-contain rounded-md" />
               </div>
 
               <div className="text-center flex-1">
@@ -415,10 +404,6 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
               <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
                 <span className="font-bold text-[#1b3f8b]">SGST ({bill.sgstPercent || 0}%)</span>
                 <span>₹{Number(bill.sgstAmount || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-                <span className="font-bold text-[#1b3f8b]">IGST ({bill.igstPercent || 0}%)</span>
-                <span>₹{Number(bill.igstAmount || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between p-1 font-black bg-blue-50/30 text-[#1b3f8b] text-xs">
                 <span>G.Total</span>
