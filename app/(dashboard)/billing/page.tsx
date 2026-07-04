@@ -6,53 +6,8 @@ import { searchCustomer, createBill } from "@/lib/api/billing";
 import { useReactToPrint } from "react-to-print";
 import { useAuth } from "@/hooks/useAuth";
 import CameraScanner from "@/components/CameraScanner";
+import InvoiceTemplate from "@/components/InvoiceTemplate";
 import { FaCamera } from "react-icons/fa";
-
-// Indian currency to words helper
-function numberToWords(num: number): string {
-  const a = [
-    "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
-    "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
-  ];
-  const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-
-  const g = ["", "Thousand", "Lakh", "Crore"];
-
-  const count = (n: number) => {
-    let word = "";
-    if (n < 20) {
-      word = a[n];
-    } else if (n < 100) {
-      word = b[Math.floor(n / 10)] + " " + a[n % 10];
-    } else {
-      word = a[Math.floor(n / 100)] + " Hundred " + count(n % 100);
-    }
-    return word.trim();
-  };
-
-  if (num === 0) return "Zero Rupees Only";
-
-  let words = "";
-  let temp = Math.floor(num);
-
-  let chunks = [];
-  chunks.push(temp % 1000); // hundreds/tens/ones
-  temp = Math.floor(temp / 1000);
-  chunks.push(temp % 100);  // thousands
-  temp = Math.floor(temp / 100);
-  chunks.push(temp % 100);  // lakhs
-  temp = Math.floor(temp / 100);
-  chunks.push(temp % 100);  // crores
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (chunk > 0) {
-      words = count(chunk) + " " + g[i] + " " + words;
-    }
-  }
-
-  return (words.trim() + " Rupees Only").replace(/\s+/g, " ");
-}
 
 export default function BillingPage() {
   const { user } = useAuth();
@@ -104,9 +59,9 @@ export default function BillingPage() {
 
   // Bill metadata
   const [paymentMode, setPaymentMode] = useState("cash");
-  const [discount, setDiscount] = useState("0");
-  const [sgstPercent, setSgstPercent] = useState("0");
-  const [cgstPercent, setCgstPercent] = useState("0");
+  const [discount, setDiscount] = useState("");
+  const [sgstPercent, setSgstPercent] = useState("");
+  const [cgstPercent, setCgstPercent] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -123,6 +78,9 @@ export default function BillingPage() {
 
   // Scanner State
   const [showScanner, setShowScanner] = useState(false);
+
+  // UPI QR Modal State
+  const [showUpiModal, setShowUpiModal] = useState(false);
 
   const printComponentRef = useRef<HTMLDivElement>(null);
 
@@ -289,12 +247,16 @@ export default function BillingPage() {
       setError("Please add at least one item to the cart");
       return;
     }
-    if (phone.trim() !== "" && phone.trim().length !== 10) {
-      setError("Customer Phone number must be exactly 10 digits");
+    if (customerName.trim() === "") {
+      setError("Customer Name is required to generate an invoice.");
       return;
     }
-    if (phone.trim() !== "" && customerName.trim() === "") {
-      setError("Customer Name is required when a Phone number is entered");
+    if (phone.trim() === "") {
+      setError("Customer Phone number is required to generate an invoice.");
+      return;
+    }
+    if (phone.trim().length !== 10) {
+      setError("Customer Phone number must be exactly 10 digits");
       return;
     }
     if (paymentMode.toLowerCase() === "finance") {
@@ -324,8 +286,8 @@ export default function BillingPage() {
       }));
 
       const billData: any = {
-        customerName: customerName || "Guest Customer",
-        customerPhone: phone || undefined,
+        customerName: customerName.trim(),
+        customerPhone: phone.trim(),
         paymentMode,
         discount: discountVal,
         sgstPercent: parseFloat(sgstPercent || "0"),
@@ -394,226 +356,7 @@ export default function BillingPage() {
     setFinanceMonths("");
   };
 
-  // Shareable render invoice helper
-  const renderInvoiceContent = (
-    isDraft: boolean,
-    billNumber: string,
-    createdAt: string | Date,
-    custName: string,
-    custPhone: string,
-    cartItems: any[],
-    subtotalVal: number,
-    discountVal: number,
-    totalVal: number,
-    sgstPercentVal: string = "0",
-    cgstPercentVal: string = "0"
-  ) => {
-    const taxableAmt = subtotalVal - discountVal;
-    const sAmt = taxableAmt * (parseFloat(sgstPercentVal || "0") / 100);
-    const cAmt = taxableAmt * (parseFloat(cgstPercentVal || "0") / 100);
 
-    return (
-      <div className="border-[3px] border-[#1b3f8b] p-4 bg-white text-black font-sans text-[11px] select-none shadow-sm rounded-sm">
-        {/* Header matching original bill */}
-        <div className="border-2 border-[#1b3f8b] p-3 mb-3">
-          <div className="flex justify-between items-center border-b border-[#1b3f8b] pb-2 mb-2">
-            <div>
-              <span className="bg-[#1b3f8b] text-white px-3 py-1 font-extrabold uppercase text-[10px] tracking-wider rounded-sm">
-                Tax Invoice
-              </span>
-            </div>
-            <div className="text-right text-[#1b3f8b]">
-              <span className="font-extrabold text-[11px] tracking-wide">GSTIN : 08BROPM8088G2Z0</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 mb-2">
-            {/* Logo icon of Lord Krishna flute/peacock feather */}
-            <div className="flex-shrink-0">
-              <img src="/shreekrishna.jpg" alt="Logo" className="w-16 h-16 object-contain rounded-md" />
-            </div>
-
-            <div className="text-center flex-1">
-              <h1 className="text-2xl font-black tracking-tight text-[#1b3f8b] leading-none uppercase">
-                Shree Krishna Computer
-              </h1>
-              <p className="text-[10px] text-gray-700 font-bold mt-1">
-                Main Bus Stand Kanore, Distt. Udaipur
-              </p>
-              <p className="text-[10px] text-gray-700 font-bold">
-                ✉ s.krishnacom.kanore@gmail.com
-              </p>
-            </div>
-
-            <div className="w-14"></div>
-          </div>
-
-         <div className="bg-[#1b3f8b] rounded-md py-3 px-4 flex items-center">
-  
-  <div className="bg-yellow-400 text-[#1b3f8b] font-black px-4 py-1 rounded mr-4 text-sm">
-    WE BELIEVE IN QUALITY
-  </div>
-
-  <div className="flex-1 text-center text-white text-xs font-bold tracking-wide">
-    MOBILE | COMPUTER | AC | CCTV | LED TV | REFRIGERATOR | WASHING MACHINE
-  </div>
-
-</div>
-
-          <div className="flex justify-between items-center pt-1.5 text-[10px] font-black text-[#1b3f8b]">
-            <div>Owner: Lalit Menariya</div>
-            <div className="flex items-center gap-1 font-bold">
-              <span>📞 9928203203</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Metadata */}
-        <div className="grid grid-cols-2 border border-[#1b3f8b] mb-3 text-[10px]">
-          <div className="p-2 border-r border-[#1b3f8b] flex flex-col justify-between min-h-[50px]">
-            <div>
-              <span className="font-extrabold text-[#1b3f8b]">M/s. </span>
-              <span className="underline font-bold text-gray-800">
-                {custName || "Guest Customer"}
-              </span>
-            </div>
-            {custPhone && (
-              <div className="mt-1">
-                <span className="font-extrabold text-[#1b3f8b]">Phone: </span>
-                <span className="font-bold">{custPhone}</span>
-              </div>
-            )}
-          </div>
-          <div className="p-2 flex flex-col justify-between min-h-[50px]">
-            <div>
-              <span className="font-extrabold text-[#1b3f8b]">Bill No. </span>
-              <span className="font-extrabold ml-1 text-red-600">
-                {isDraft ? "DRAFT" : billNumber}
-              </span>
-            </div>
-            <div className="mt-1">
-              <span className="font-extrabold text-[#1b3f8b]">Date: </span>
-              <span className="font-bold">
-                {createdAt instanceof Date ? createdAt.toLocaleDateString("en-IN") : new Date(createdAt).toLocaleDateString("en-IN")}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Items Table */}
-        <table className="w-full border-collapse border border-[#1b3f8b] mb-3 text-[10px]">
-          <thead>
-            <tr className="border-b border-[#1b3f8b] bg-blue-50/30 text-[#1b3f8b]">
-              <th className="border-r border-[#1b3f8b] p-1.5 text-left w-10 font-extrabold">No.</th>
-              <th className="border-r border-[#1b3f8b] p-1.5 text-left font-extrabold">Particulars</th>
-              <th className="border-r border-[#1b3f8b] p-1.5 text-center w-12 font-extrabold">Qty.</th>
-              <th className="border-r border-[#1b3f8b] p-1.5 text-right w-20 font-extrabold">Rate</th>
-              <th className="p-1.5 text-right w-24 font-extrabold">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cartItems.map((item: any, idx: number) => {
-              const pName = item.product ? item.product.name : item.name;
-              const pRate = item.product ? item.product.sellingPrice : parseFloat(item.unitPrice || "0");
-              const pQty = item.quantity;
-              const pTotal = item.product ? (item.product.sellingPrice * item.quantity) : parseFloat(item.lineTotal || "0");
-              const imei = item.productUnit?.imeiNumber || ((item.product?.productType === "serialized" || item.product?.productType === "electronics") && item.product.units?.find((u: any) => u.id.toString() === item.selectedUnitId)?.imeiNumber);
-
-              return (
-                <tr key={idx} className="border-b border-[#1b3f8b]">
-                  <td className="border-r border-[#1b3f8b] p-1.5 text-left">{idx + 1}</td>
-                  <td className="border-r border-[#1b3f8b] p-1.5 text-left">
-                    <div className="font-bold text-gray-800">{pName}</div>
-                    {imei && (
-                      <div className="text-[8px] text-gray-600 font-semibold mt-0.5">
-                        {item.product?.productType === "electronics" ? "S M No." : "IMEI"}: {imei}
-                      </div>
-                    )}
-                  </td>
-                  <td className="border-r border-[#1b3f8b] p-1.5 text-center font-bold">{pQty}</td>
-                  <td className="border-r border-[#1b3f8b] p-1.5 text-right font-bold">₹{pRate}</td>
-                  <td className="p-1.5 text-right font-bold">₹{pTotal}</td>
-                </tr>
-              );
-            })}
-            {/* Fill remaining empty rows to maintain minimum height */}
-            {Array.from({ length: Math.max(0, 4 - cartItems.length) }).map((_, idx) => (
-              <tr key={`empty-${idx}`} className="border-b border-[#1b3f8b] h-8">
-                <td className="border-r border-[#1b3f8b] p-1.5"></td>
-                <td className="border-r border-[#1b3f8b] p-1.5"></td>
-                <td className="border-r border-[#1b3f8b] p-1.5"></td>
-                <td className="border-r border-[#1b3f8b] p-1.5"></td>
-                <td className="p-1.5"></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Bottom section with totals & bank details */}
-        <div className="grid grid-cols-2 gap-4 mb-3 text-[10px]">
-          <div>
-            {/* Bank Details */}
-            <div className="border border-[#1b3f8b] p-2 text-[8px] leading-normal text-gray-800">
-              <div className="font-extrabold text-[#1b3f8b] underline mb-1 uppercase text-[9px]">Bank Details:</div>
-              <div>Bank : <span className="font-bold">State Bank of India</span></div>
-              <div>IFSE : <span className="font-bold">SBIN0032015</span></div>
-              <div>A/c No. : <span className="font-bold">61181530264</span></div>
-              <div>A/c No. : <span className="font-bold">61130908984</span></div>
-            </div>
-          </div>
-
-          <div className="border border-[#1b3f8b] text-[10px]">
-            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-              <span className="font-bold text-[#1b3f8b]">Subtotal</span>
-              <span className="font-bold">₹{subtotalVal}</span>
-            </div>
-            {discountVal > 0 && (
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b] text-red-600 bg-red-50/50">
-                <span className="font-bold">Discount</span>
-                <span className="font-bold">- ₹{discountVal}</span>
-              </div>
-            )}
-            <div className="flex justify-between p-1 border-b border-[#1b3f8b] bg-gray-50/50">
-              <span className="font-bold text-[#1b3f8b]">Taxable Amount</span>
-              <span className="font-bold">₹{taxableAmt.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-              <span className="font-bold text-[#1b3f8b]">CGST ({cgstPercentVal}%)</span>
-              <span>₹{cAmt.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-              <span className="font-bold text-[#1b3f8b]">SGST ({sgstPercentVal}%)</span>
-              <span>₹{sAmt.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between p-1 font-black bg-blue-50/30 text-[#1b3f8b] text-xs">
-              <span>G.Total</span>
-              <span>₹{totalVal.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-4 text-[10px]">
-          <span className="font-extrabold text-[#1b3f8b]">Rs. (In Word): </span>
-          <span className="italic underline font-bold text-gray-800">
-            {numberToWords(totalVal)}
-          </span>
-        </div>
-
-        {/* Signatures */}
-        <div className="flex justify-between items-end pt-4 text-[10px] text-[#1b3f8b]">
-          <div className="text-center w-32 border-t border-[#1b3f8b] pt-1 font-bold">
-            Cust.Signature
-          </div>
-          <div className="text-center w-48">
-            <div className="text-[9px] font-black mb-6">For-SHREE KRISHNA COMPUTER</div>
-            <div className="border-t border-[#1b3f8b] pt-1 font-bold">
-              Auth.Signature
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 h-[calc(100vh-8rem)]">
@@ -624,19 +367,22 @@ export default function BillingPage() {
           <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Live Bill Preview</span>
           <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">Real-time update</span>
         </div>
-        {renderInvoiceContent(
-          true,
-          "DRAFT",
-          new Date(),
-          customerName,
-          phone,
-          cart,
-          subtotal,
-          parseFloat(discount || "0"),
-          totalAmount,
-          sgstPercent,
-          cgstPercent
-        )}
+        <InvoiceTemplate
+          isDraft={true}
+          billNumber="DRAFT"
+          createdAt={new Date()}
+          customerName={customerName}
+          customerPhone={phone}
+          cartItems={cart}
+          subtotal={subtotal}
+          discount={parseFloat(discount || "0")}
+          totalAmount={totalAmount}
+          sgstPercent={sgstPercent}
+          cgstPercent={cgstPercent}
+          paidAmount={paidAmount ? parseFloat(paidAmount) : totalAmount}
+          dueAmount={paidAmount ? totalAmount - parseFloat(paidAmount) : 0}
+          paymentMode={paymentMode}
+        />
       </div>
 
       {/* RIGHT: Input form & Terminal */}
@@ -772,7 +518,7 @@ export default function BillingPage() {
           {/* Customer Phone */}
           <div>
             <label className="block text-sm font-bold text-gray-700">
-              Customer Phone (10 digits)
+              Customer Phone (10 digits) <span className="text-red-500">*</span>
             </label>
             <div className="relative mt-1">
               <input
@@ -790,29 +536,31 @@ export default function BillingPage() {
               />
               {isSearchingCustomer && <span className="absolute right-3 top-2.5 text-xs text-blue-500 font-bold">Searching...</span>}
             </div>
-            {phone && phone.length !== 10 && (
+            {phone.trim() === "" ? (
+              <span className="text-[10px] text-red-500 font-bold mt-1 block">Phone number is required</span>
+            ) : phone.length !== 10 ? (
               <span className="text-[10px] text-amber-600 font-bold mt-1 block">Phone must be exactly 10 digits</span>
-            )}
+            ) : null}
           </div>
 
           {/* Customer Name */}
           <div>
             <label className="block text-sm font-bold text-gray-700">
-              Customer Name {phone.trim().length > 0 && <span className="text-red-500">*</span>}
+              Customer Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              placeholder={phone.trim().length > 0 ? "Enter customer name..." : "Guest Customer"}
+              placeholder="Enter customer name..."
               className={`mt-1 block w-full border-2 rounded-lg py-2 px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 ${
-                phone.trim().length > 0 && customerName.trim() === ""
+                customerName.trim() === ""
                   ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20"
                   : "border-gray-300 focus:border-blue-600 focus:ring-blue-100"
               }`}
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
             />
-            {phone.trim().length > 0 && customerName.trim() === "" && (
-              <span className="text-[10px] text-red-500 font-bold mt-1 block">Name is required when phone is entered</span>
+            {customerName.trim() === "" && (
+              <span className="text-[10px] text-red-500 font-bold mt-1 block">Name is required</span>
             )}
           </div>
 
@@ -826,7 +574,12 @@ export default function BillingPage() {
                 <button
                   key={mode}
                   type="button"
-                  onClick={() => setPaymentMode(mode)}
+                  onClick={() => {
+                    setPaymentMode(mode);
+                    if (mode === "upi") {
+                      setShowUpiModal(true);
+                    }
+                  }}
                   className={`py-2 text-center rounded-lg border-2 capitalize text-xs font-bold transition ${
                     paymentMode === mode
                       ? "bg-blue-600 border-blue-600 text-white shadow-sm"
@@ -901,12 +654,20 @@ export default function BillingPage() {
               type="number"
               min="0"
               max={subtotal}
-              className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+              placeholder="0"
+              className={`mt-1 block w-full border-2 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 transition ${
+                parseFloat(discount || "0") > subtotal 
+                  ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" 
+                  : "border-gray-300 focus:border-blue-600 focus:ring-blue-100"
+              }`}
               value={discount}
               onChange={(e) => setDiscount(e.target.value)}
               onKeyDown={(e) => handleNumberKeyDown(e, true)}
               onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
+            {parseFloat(discount || "0") > subtotal && (
+              <span className="text-[10px] text-red-500 font-bold mt-1 block">Discount cannot exceed subtotal (₹{subtotal})</span>
+            )}
           </div>
         </div>
 
@@ -915,18 +676,32 @@ export default function BillingPage() {
           <div>
             <label className="block text-sm font-bold text-gray-700">SGST (%)</label>
             <input
-              type="number" min="0" max="100"
-              className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+              type="number" min="0" max="100" placeholder="0"
+              className={`mt-1 block w-full border-2 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 transition ${
+                parseFloat(sgstPercent) > 100 
+                  ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" 
+                  : "border-gray-300 focus:border-blue-600 focus:ring-blue-100"
+              }`}
               value={sgstPercent} onChange={(e) => setSgstPercent(e.target.value)} onKeyDown={(e) => handleNumberKeyDown(e, true)} onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
+            {parseFloat(sgstPercent) > 100 && (
+              <span className="text-[10px] text-red-500 font-bold mt-1 block">Invalid value. Max 100%</span>
+            )}
           </div>
           <div>
-            <label className="block text-sm font-bold  text-gray-700">CGST (%)</label>
+            <label className="block text-sm font-bold text-gray-700">CGST (%)</label>
             <input
-              type="number" min="0" max="100"
-              className="mt-1 block w-full border-2 border-gray-300 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-600 transition"
+              type="number" min="0" max="100" placeholder="0"
+              className={`mt-1 block w-full border-2 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 transition ${
+                parseFloat(cgstPercent) > 100 
+                  ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" 
+                  : "border-gray-300 focus:border-blue-600 focus:ring-blue-100"
+              }`}
               value={cgstPercent} onChange={(e) => setCgstPercent(e.target.value)} onKeyDown={(e) => handleNumberKeyDown(e, true)} onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
+            {parseFloat(cgstPercent) > 100 && (
+              <span className="text-[10px] text-red-500 font-bold mt-1 block">Invalid value. Max 100%</span>
+            )}
           </div>
         </div>
 
@@ -950,7 +725,7 @@ export default function BillingPage() {
         <div className="border-t pt-4 mt-4">
           <button
             onClick={handleCheckout}
-            disabled={isSaving || cart.length === 0 || (phone.trim().length > 0 && customerName.trim() === "")}
+            disabled={isSaving || cart.length === 0 || (phone.trim().length > 0 && customerName.trim() === "") || parseFloat(sgstPercent) > 100 || parseFloat(cgstPercent) > 100 || parseFloat(discount || "0") > subtotal}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3.5 rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed text-sm uppercase tracking-wider"
           >
             {isSaving ? "Creating Invoice..." : "Generate & Print Invoice"}
@@ -980,19 +755,22 @@ export default function BillingPage() {
                 className="p-1"
                 style={{ width: "100%", maxWidth: "800px", margin: "0 auto" }}
               >
-                {renderInvoiceContent(
-                  false,
-                  createdBill.billNumber,
-                  createdBill.createdAt,
-                  createdBill.customer?.name || customerName || "Guest Customer",
-                  createdBill.customer?.phone || phone,
-                  createdBill.billItems,
-                  parseFloat(createdBill.subtotal),
-                  parseFloat(createdBill.discount),
-                  parseFloat(createdBill.totalAmount),
-                  createdBill.sgstPercent?.toString(),
-                  createdBill.cgstPercent?.toString()
-                )}
+                <InvoiceTemplate
+                  isDraft={false}
+                  billNumber={createdBill.billNumber}
+                  createdAt={createdBill.createdAt}
+                  customerName={createdBill.customer?.name || customerName || "Guest Customer"}
+                  customerPhone={createdBill.customer?.phone || phone}
+                  cartItems={createdBill.billItems}
+                  subtotal={parseFloat(createdBill.subtotal)}
+                  discount={parseFloat(createdBill.discount)}
+                  totalAmount={parseFloat(createdBill.totalAmount)}
+                  sgstPercent={createdBill.sgstPercent?.toString()}
+                  cgstPercent={createdBill.cgstPercent?.toString()}
+                  paidAmount={parseFloat(createdBill.paidAmount)}
+                  dueAmount={parseFloat(createdBill.dueAmount)}
+                  paymentMode={createdBill.paymentMode}
+                />
               </div>
             </div>
 
@@ -1020,6 +798,38 @@ export default function BillingPage() {
           onClose={() => setShowScanner(false)}
         />
       )}
+      {/* UPI QR Modal */}
+      {showUpiModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-2xl relative w-80 h-80 flex flex-col animate-fade-in border border-gray-100">
+            <button
+              onClick={() => setShowUpiModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            <div className="text-center mt-2">
+              <h2 className="text-xl font-black text-gray-900 mb-1">UPI Payment</h2>
+              <p className="text-xs text-gray-500 font-medium">Scan QR to pay using any UPI app</p>
+            </div>
+            
+            <div className="flex-1 flex justify-center items-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 my-4 group hover:border-blue-400 transition-colors">
+              {/* Placeholder for actual QR code image */}
+              <div className="text-7xl transform group-hover:scale-110 transition-transform duration-300">📱</div>
+            </div>
+            
+            <div className="flex items-center justify-center px-4 py-2 bg-blue-50/50 rounded-lg border border-blue-100">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-xs font-semibold text-gray-700">Waiting for payment...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -42,3 +42,11 @@ next-env.d.ts
 
 # WhatsApp session credentials (sensitive — never commit)
 session_auth_info/
+
+# Invoices and Uploads (Contains Customer PII)
+public/uploads/
+
+# Database files (Contains sensitive customer and financial data)
+*.db
+*.db-journal
+prisma/dev.db

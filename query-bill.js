@@ -1,15 +1,22 @@
-const { PrismaClient } = require("@prisma/client");
-
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
   const bill = await prisma.bill.findFirst({
-    orderBy: { id: 'desc' },
-    include: { customer: true }
+    where: { billNumber: { contains: '339' } },
+    include: {
+      billItems: {
+        include: {
+          product: {
+            include: {
+              category: true
+            }
+          }
+        }
+      }
+    }
   });
-  console.log(bill);
+  console.log(JSON.stringify(bill, null, 2));
 }
 
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+main().catch(console.error).finally(() => prisma.$disconnect());

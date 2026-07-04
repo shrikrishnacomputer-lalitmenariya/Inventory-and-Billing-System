@@ -71,6 +71,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
+    if (!customerName || customerName.trim() === "") {
+      return NextResponse.json({ error: "Customer name is required" }, { status: 400 });
+    }
+
+    if (!customerPhone || customerPhone.trim() === "" || customerPhone.trim().length !== 10) {
+      return NextResponse.json({ error: "Valid 10-digit customer phone number is required" }, { status: 400 });
+    }
+
     if (!paymentMode) {
       return NextResponse.json({ error: "Payment mode is required" }, { status: 400 });
     }
@@ -104,7 +112,7 @@ export async function POST(req: Request) {
 
       // 2. Generate Sequential Bill Number
       const count = await tx.bill.count();
-      const nextBillNo = (4900 + count + 1).toString();
+      const nextBillNo = (300 + count + 1).toString();
 
       // 3. Process Cart Items and calculate totals
       let subtotal = 0;

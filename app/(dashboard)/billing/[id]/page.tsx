@@ -54,7 +54,7 @@ function numberToWords(num: number): string {
 export default function BillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { role } = useAuth();
-  
+
   const unwrappedParams = use(params);
   const billId = unwrappedParams.id;
 
@@ -174,11 +174,10 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
           <span className="font-semibold text-gray-800">
             Bill #{bill.billNumber}
           </span>
-          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-            bill.status === "voided" 
-              ? "bg-red-100 text-red-800" 
-              : "bg-green-100 text-green-800"
-          }`}>
+          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bill.status === "voided"
+            ? "bg-red-100 text-red-800"
+            : "bg-green-100 text-green-800"
+            }`}>
             {bill.status}
           </span>
         </div>
@@ -200,7 +199,7 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
               )}
             </button>
           )}
-          {role === "owner" && bill.status !== "voided" && isSameDay() && (
+          {role === "owner" && bill.status !== "voided" && !bill.isSettled && isSameDay() && (
             <button
               onClick={handleVoid}
               disabled={voiding}
@@ -209,33 +208,110 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
               {voiding ? "Voiding..." : "Void Bill"}
             </button>
           )}
-          <button
-            onClick={handlePrint}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded text-sm"
-          >
-            Print Receipt
-          </button>
+          {bill.status !== "voided" && (
+            <button
+              onClick={handlePrint}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded text-sm"
+            >
+              Print Receipt
+            </button>
+          )}
         </div>
       </div>
 
       {error && <div className="text-red-600 bg-red-50 p-3 rounded text-sm">{error}</div>}
 
       {whatsappStatus && (
-        <div className={`p-3 rounded text-sm font-semibold ${
-          whatsappStatus.type === "success"
-            ? "bg-green-50 text-green-700 border border-green-200"
-            : "bg-red-50 text-red-700 border border-red-200"
-        }`}>
+        <div className={`p-3 rounded text-sm font-semibold ${whatsappStatus.type === "success"
+          ? "bg-green-50 text-green-700 border border-green-200"
+          : "bg-red-50 text-red-700 border border-red-200"
+          }`}>
           {whatsappStatus.type === "success" ? "✅" : "❌"} {whatsappStatus.message}
         </div>
       )}
 
-      {/* Invoice sheet preview */}
-      <div className="bg-white p-8 rounded-lg shadow overflow-x-auto flex justify-center">
+      {/* Print-only styles */}
+      <style>{`
+        @media print {
+          /* Set a definitive top margin on the physical printed page */
+          @page {
+            margin: 20mm auto 0 auto; 
+          }
+
+          /* Ensure body doesn't interfere with print */
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* CRITICAL: Fix vertical alignment for the print wrapper */
+          .print-page-wrapper {
+            min-height: 100vh !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            position: relative !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100vh !important;
+            page-break-inside: avoid !important;
+          }
+
+          /* Fix vertical alignment for the content container */
+          .print-page-wrapper > div {
+            margin: auto !important;
+            transform: scale(1) !important;
+            transform-origin: center center !important;
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+          }
+
+          /* Ensure the actual invoice content is captured properly */
+          .print-page-wrapper [ref] {
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;
+            position: relative !important;
+          }
+
+          /* Hide UI elements during print */
+          button, .hidden-on-print {
+            display: none !important;
+          }
+
+          /* Maintain proper colors and appearance */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+
+        /* Ensure print display classes work */
+        .print-page-wrapper.print\\:bg-white.print\\:flex.print\\:items-center.print\\:justify-center > div {
+          background: white !important;
+        }
+      `}</style>
+
+      {/* Invoice sheet preview with proper print classes */}
+      <div className="bg-white p-8 rounded-lg shadow overflow-x-auto flex justify-center print-page-wrapper print\:bg-white print\:flex print\:items-center print\:justify-center">
         <div
           ref={printComponentRef}
           className="border-[3px] border-[#1b3f8b] p-4 bg-white text-black font-sans text-[11px] select-none shadow-sm rounded-sm"
-          style={{ width: "100%", maxWidth: "650px" }}
+          style={{ width: "100%", maxWidth: "650px", margin: "0 auto", paddingTop: "20px" }}
         >
           {/* Header matching original bill */}
           <div className="border-2 border-[#1b3f8b] p-3 mb-3">
@@ -277,16 +353,16 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
             </div>
 
             <div className="bg-[#1b3f8b] rounded-md py-3 px-4 flex items-center">
-  
-  <div className="bg-yellow-400 text-[#1b3f8b] font-black px-4 py-1 rounded mr-4 text-sm">
-    WE BELIEVE IN QUALITY
-  </div>
 
-  <div className="flex-1 text-center text-white text-xs font-bold tracking-wide">
-    MOBILE | COMPUTER | AC | CCTV | LED TV | REFRIGERATOR | WASHING MACHINE
-  </div>
+              <div className="bg-yellow-400 text-[#1b3f8b] font-black px-4 py-1 rounded mr-4 text-sm">
+                WE BELIEVE IN QUALITY
+              </div>
 
-</div>
+              <div className="flex-1 text-center text-white text-xs font-bold tracking-wide">
+                MOBILE | COMPUTER | AC | CCTV | LED TV | REFRIGERATOR | WASHING MACHINE
+              </div>
+
+            </div>
 
             <div className="flex justify-between items-center pt-1.5 text-[10px] font-black text-[#1b3f8b]">
               <div>Owner: Lalit Menariya</div>
@@ -373,51 +449,82 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
           <div className="grid grid-cols-2 gap-4 mb-3 text-[10px]">
             <div>
               {/* Bank Details */}
-              <div className="border border-[#1b3f8b] p-2 text-[8px] leading-normal text-gray-800">
-                <div className="font-extrabold text-[#1b3f8b] underline mb-1 uppercase text-[9px]">Bank Details:</div>
-                <div>Bank : <span className="font-bold">State Bank of India</span></div>
-                <div>IFSE : <span className="font-bold">SBIN0032015</span></div>
-                <div>A/c No. : <span className="font-bold">61181530264</span></div>
-                <div>A/c No. : <span className="font-bold">61130908984</span></div>
-              </div>
-            </div>
-
-            <div className="border border-[#1b3f8b] text-[10px]">
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-                <span className="font-bold text-[#1b3f8b]">Subtotal</span>
-                <span className="font-bold">₹{bill.subtotal}</span>
-              </div>
-              {bill.discount > 0 && (
-                <div className="flex justify-between p-1 border-b border-[#1b3f8b] text-red-600 bg-red-50/50">
-                  <span className="font-bold">Discount</span>
-                  <span className="font-bold">- ₹{bill.discount}</span>
+              <div className="border border-[#1b3f8b] p-2 text-[8px] leading-normal text-gray-800 flex justify-between items-center">
+                <div>
+                  <div className="font-extrabold text-[#1b3f8b] underline mb-1 uppercase text-[9px]">Bank Details:</div>
+                  <div>Bank : <span className="font-bold">State Bank of India</span></div>
+                  <div>IFSE : <span className="font-bold">SBIN0032015</span></div>
+                  <div>A/c No. : <span className="font-bold">61181530264</span></div>
+                  <div>A/c No. : <span className="font-bold">61130908984</span></div>
                 </div>
-              )}
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b] bg-gray-50/50">
-                <span className="font-bold text-[#1b3f8b]">Taxable Amount</span>
-                <span className="font-bold">₹{(Number(bill.subtotal) - Number(bill.discount)).toFixed(2)}</span>
+                {bill.paymentMode === "upi" && (
+                  <div className="flex flex-col items-center justify-center border-l border-gray-300 pl-2 ml-2">
+                    <div className="text-3xl">📱</div>
+                    <div className="text-[6px] font-bold mt-1 text-center">Scan to<br />Pay</div>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-                <span className="font-bold text-[#1b3f8b]">CGST ({bill.cgstPercent || 0}%)</span>
-                <span>₹{Number(bill.cgstAmount || 0).toFixed(2)}</span>
+              <div className="mt-3 text-[8px] text-gray-700 leading-tight">
+                <div className="font-bold underline mb-1">Terms & Conditions:</div>
+                <ol className="list-decimal pl-3 space-y-0.5">
+                  <li>Warranty is subject to company policy.</li>
+                  <li>Servicing is strictly limited to authorized service centers.</li>
+                  <li>Water damage and physical breakage are not covered in warranty.</li>
+                </ol>
               </div>
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
-                <span className="font-bold text-[#1b3f8b]">SGST ({bill.sgstPercent || 0}%)</span>
-                <span>₹{Number(bill.sgstAmount || 0).toFixed(2)}</span>
+            </div>
+
+            <div>
+              <div className="border border-[#1b3f8b] text-[10px]">
+                <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+                  <span className="font-bold text-[#1b3f8b]">Subtotal</span>
+                  <span className="font-bold">₹{bill.subtotal}</span>
+                </div>
+                {bill.discount > 0 && (
+                  <div className="flex justify-between p-1 border-b border-[#1b3f8b] text-red-600 bg-red-50/50">
+                    <span className="font-bold">Discount</span>
+                    <span className="font-bold">- ₹{bill.discount}</span>
+                  </div>
+                )}
+                <div className="flex justify-between p-1 border-b border-[#1b3f8b] bg-gray-50/50">
+                  <span className="font-bold text-[#1b3f8b]">Taxable Amount</span>
+                  <span className="font-bold">₹{(Number(bill.subtotal) - Number(bill.discount)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+                  <span className="font-bold text-[#1b3f8b]">CGST ({bill.cgstPercent || 0}%)</span>
+                  <span>₹{Number(bill.cgstAmount || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
+                  <span className="font-bold text-[#1b3f8b]">SGST ({bill.sgstPercent || 0}%)</span>
+                  <span>₹{Number(bill.sgstAmount || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between p-1 font-black bg-blue-50/30 text-[#1b3f8b] text-xs">
+                  <span>G.Total</span>
+                  <span>₹{bill.totalAmount}</span>
+                </div>
+                {Number(bill.dueAmount) > 0 && (
+                  <>
+                    <div className="flex justify-between p-1 border-t border-[#1b3f8b] text-green-700 bg-green-50/30 font-bold">
+                      <span>Paid Amount</span>
+                      <span>₹{Number(bill.paidAmount).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between p-1 border-t border-[#1b3f8b] text-red-700 bg-red-50/30 font-bold">
+                      <span>Due Amount</span>
+                      <span>₹{Number(bill.dueAmount).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
-              <div className="flex justify-between p-1 font-black bg-blue-50/30 text-[#1b3f8b] text-xs">
-                <span>G.Total</span>
-                <span>₹{bill.totalAmount}</span>
+              <div className="mt-2 text-[10px]">
+                <span className="font-extrabold text-[#1b3f8b]">Rs. (In Word): </span>
+                <span className="italic underline font-bold text-gray-800">
+                  {numberToWords(parseFloat(bill.totalAmount))}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="mb-4 text-[10px]">
-            <span className="font-extrabold text-[#1b3f8b]">Rs. (In Word): </span>
-            <span className="italic underline font-bold text-gray-800">
-              {numberToWords(parseFloat(bill.totalAmount))}
-            </span>
-          </div>
+
 
           {/* Signatures */}
           <div className="flex justify-between items-end pt-4 text-[10px] text-[#1b3f8b]">

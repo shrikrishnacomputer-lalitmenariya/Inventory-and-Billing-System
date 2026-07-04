@@ -154,6 +154,24 @@ export default function StaffManagementPage() {
     }
   };
 
+  const handleDeleteUser = async (user: User) => {
+    if (!window.confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
+      return;
+    }
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch(`/api/v1/users/${user.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete user");
+      
+      setSuccess("User deleted successfully.");
+      loadUsers();
+    } catch (err: any) {
+      setError(err.message || "Failed to delete user");
+    }
+  };
+
   if (authLoading || role !== "owner") return null;
 
   return (
@@ -180,7 +198,7 @@ export default function StaffManagementPage() {
         <div className="text-center py-10">Loading user accounts...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {users.map((user) => (
+          {users.filter(u => u.role !== "owner").map((user) => (
             <div
               key={user.id}
               className={`bg-white rounded-lg shadow-sm border p-6 flex flex-col justify-between transition hover:shadow-md ${
@@ -221,11 +239,24 @@ export default function StaffManagementPage() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+              <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
+                <button
+                  onClick={() => handleDeleteUser(user)}
+                  className="text-red-600 hover:text-red-800 font-medium text-sm transition flex items-center gap-1"
+                  title="Delete user"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete
+                </button>
                 <button
                   onClick={() => handleOpenEdit(user)}
-                  className="text-blue-600 hover:text-blue-900 font-medium text-sm transition"
+                  className="text-blue-600 hover:text-blue-900 font-medium text-sm transition flex items-center gap-1"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                   Edit Profile
                 </button>
               </div>
@@ -262,10 +293,16 @@ export default function StaffManagementPage() {
                   type="text"
                   required
                   placeholder="e.g. lalit_staff"
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className={`mt-1 block w-full border ${error?.includes("Username") ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"} rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm`}
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    if (error?.includes("Username")) setError(""); // Clear error when typing
+                  }}
                 />
+                {error?.includes("Username") && (
+                  <p className="text-red-600 text-xs font-medium mt-1">This username is already taken. It must be unique.</p>
+                )}
               </div>
 
               <div>
@@ -284,14 +321,9 @@ export default function StaffManagementPage() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700">Role</label>
-                <select
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  value={userRole}
-                  onChange={(e) => setUserRole(e.target.value)}
-                >
-                  <option value="staff">Staff Member</option>
-                  <option value="owner">Owner / Admin</option>
-                </select>
+                <div className="mt-1 block w-full bg-gray-50 border border-gray-300 text-gray-500 rounded-md shadow-sm py-2 px-3 sm:text-sm cursor-not-allowed">
+                  Staff Member
+                </div>
               </div>
 
               {isEditing && (

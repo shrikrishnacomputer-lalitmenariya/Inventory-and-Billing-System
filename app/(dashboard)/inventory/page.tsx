@@ -203,9 +203,11 @@ export default function InventoryPage() {
         imageUrl: editFormData.imageUrl || null,
         barcode: editFormData.barcode || null,
       });
+      setSavingEdit(false);
       setEditingProduct(null);
-      loadData();
+      await loadData();
     } catch (err: any) {
+      console.error("Update error:", err);
       setEditError(err.message || "Failed to update product");
       setSavingEdit(false);
     }

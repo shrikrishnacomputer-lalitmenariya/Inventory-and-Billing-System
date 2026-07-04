@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [overduePayments, setOverduePayments] = useState<any[]>([]);
+  const [sendingWhatsappId, setSendingWhatsappId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [trendType, setTrendType] = useState<"daily" | "weekly" | "monthly">("daily");
@@ -175,6 +176,9 @@ export default function DashboardPage() {
       setStats(statsData);
       setNotifications(notifData);
       setOverduePayments(overdueData);
+      
+      // Also refresh WhatsApp settings when user clicks Refresh
+      fetchWhatsappSettings();
     } catch (err: any) {
       console.error(err);
       setError(err.message || "An error occurred while loading dashboard metrics");
@@ -328,51 +332,85 @@ export default function DashboardPage() {
             <h3 className="text-lg font-bold text-red-800">Urgent: Overdue Payments (15+ Days)</h3>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {overduePayments.map((bill) => {
-              const openWhatsApp = () => {
-                const phone = bill.customer?.phone;
-                if (!phone) return;
-                const formattedPhone = phone.length === 10 ? `91${phone}` : phone;
-                const msg = `Hello ${bill.customer?.name || "Customer"}, this is Shree Krishna Computer. Your pending due of ₹${parseFloat(bill.dueAmount).toFixed(2)} from bill #${bill.billNumber} is overdue. Please settle it at your earliest convenience.`;
-                window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, "_blank");
-              };
-
-              return (
-                <div key={bill.id} className="bg-white rounded-lg p-4 shadow-sm border border-red-100 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="font-bold text-gray-900 truncate" title={bill.customer?.name}>
-                        {bill.customer?.name || "Guest"}
-                      </div>
-                      <Link href={`/billing/${bill.id}`} className="text-xs font-bold text-blue-600 hover:underline">
-                        #{bill.billNumber}
-                      </Link>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-1">{bill.customer?.phone || "No Phone"}</div>
-                    <div className="text-sm font-black text-red-600">Due: ₹{parseFloat(bill.dueAmount).toFixed(2)}</div>
-                    <div className="text-xs text-gray-500 mt-1">Bill Date: {new Date(bill.createdAt).toLocaleDateString()}</div>
-                  </div>
+          <div className="max-h-[340px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {overduePayments.map((bill) => {
+                const handleSendReminder = async () => {
+                  const phone = bill.customer?.phone || bill.customerPhone;
+                  if (!phone) {
+                    alert("No phone number available for this customer.");
+                    return;
+                  }
                   
-                  {bill.customer?.phone && (
-                    <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
-                      <a 
-                        href={`tel:${bill.customer.phone}`}
-                        className="flex-1 flex justify-center items-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 py-1.5 rounded-md text-sm font-bold transition"
-                      >
-                        📞 Call
-                      </a>
-                      <button 
-                        onClick={openWhatsApp}
-                        className="flex-1 flex justify-center items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white py-1.5 rounded-md text-sm font-bold transition"
-                      >
-                        WhatsApp
-                      </button>
+                  try {
+                    setSendingWhatsappId(bill.id);
+                    const { generateBillPdfBlob } = await import("@/lib/client-pdf");
+                    const blob = await generateBillPdfBlob(bill);
+
+                    const formData = new FormData();
+                    formData.append("file", blob, `SKC_Invoice_${bill.billNumber}.pdf`);
+                    formData.append("customerName", bill.customer?.name || "Customer");
+                    formData.append("mobileNumber", phone);
+                    formData.append("billNumber", bill.billNumber);
+                    
+                    const reminderMsg = `Hello ${bill.customer?.name || "Customer"},\nThis is Shree Krishna Computer. Your pending due of ₹${parseFloat(bill.dueAmount).toFixed(2)} from bill #${bill.billNumber} is overdue. Please settle it at your earliest convenience.`;
+                    formData.append("customMessage", reminderMsg);
+
+                    const res = await fetch(`/api/v1/bills/${bill.id}/whatsapp/upload`, {
+                      method: "POST",
+                      body: formData,
+                    });
+
+                    const data = await res.json();
+                    if (!res.ok || !data.success) {
+                      throw new Error(data.error || "Failed to send WhatsApp message");
+                    }
+                    
+                    // Automatically hide it on success to reflect the cooling period
+                    setOverduePayments(prev => prev.filter(p => p.id !== bill.id));
+                  } catch (err: any) {
+                    console.error("WhatsApp send error:", err);
+                    alert(err.message || "Failed to send WhatsApp reminder");
+                  } finally {
+                    setSendingWhatsappId(null);
+                  }
+                };
+
+                return (
+                  <div key={bill.id} className="bg-white rounded-lg p-4 shadow-sm border border-red-100 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="font-bold text-gray-900 truncate" title={bill.customer?.name}>
+                          {bill.customer?.name || "Guest"}
+                        </div>
+                        <Link href={`/billing/${bill.id}`} className="text-xs font-bold text-blue-600 hover:underline">
+                          #{bill.billNumber}
+                        </Link>
+                      </div>
+                      <div className="text-sm text-gray-600 mb-1">{bill.customer?.phone || bill.customerPhone || "No Phone"}</div>
+                      <div className="text-sm font-black text-red-600">Due: ₹{parseFloat(bill.dueAmount).toFixed(2)}</div>
+                      <div className="text-xs text-gray-500 mt-1">Bill Date: {new Date(bill.createdAt).toLocaleDateString()}</div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    
+                    {(bill.customer?.phone || bill.customerPhone) && (
+                      <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+                        <button 
+                          onClick={handleSendReminder}
+                          disabled={sendingWhatsappId === bill.id || !whatsappSettings || whatsappSettings.status !== "connected"}
+                          className="flex-1 flex justify-center items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white py-1.5 rounded-md text-sm font-bold transition disabled:opacity-50"
+                        >
+                          {sendingWhatsappId === bill.id ? (
+                            <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                          ) : (
+                            "WhatsApp"
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -690,7 +728,7 @@ export default function DashboardPage() {
       {/* Quick Action Navigation Grid */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <h3 className="text-lg font-bold text-gray-800 mb-4">Quick Management Utilities</h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
             href="/billing"
             className="flex flex-col items-center justify-center p-4 border border-gray-100 rounded-lg hover:bg-blue-50/50 hover:border-blue-200 transition text-center text-decoration-none"
@@ -704,20 +742,6 @@ export default function DashboardPage() {
           >
             <span className="text-2xl mb-2">📦</span>
             <span className="text-xs font-bold text-gray-700">Add Product</span>
-          </Link>
-          <Link
-            href="/inventory"
-            className="flex flex-col items-center justify-center p-4 border border-gray-100 rounded-lg hover:bg-purple-50/50 hover:border-purple-200 transition text-center text-decoration-none"
-          >
-            <span className="text-2xl mb-2">🏷️</span>
-            <span className="text-xs font-bold text-gray-700">Add Category</span>
-          </Link>
-          <Link
-            href="/inventory"
-            className="flex flex-col items-center justify-center p-4 border border-gray-100 rounded-lg hover:bg-cyan-50/50 hover:border-cyan-200 transition text-center text-decoration-none"
-          >
-            <span className="text-2xl mb-2">🔄</span>
-            <span className="text-xs font-bold text-gray-700">Update Stock</span>
           </Link>
           <Link
             href="/analytics"

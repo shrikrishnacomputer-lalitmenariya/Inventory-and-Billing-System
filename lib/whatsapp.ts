@@ -5,7 +5,7 @@ export async function getWhatsappSettings() {
   if (!settings) {
     settings = await prisma.whatsappSettings.create({
       data: {
-        ownerPhone: "6375591682",
+        ownerPhone: "9928203203",
         status: "disconnected",
         simulateFailures: false,
         simulateSessionError: false,
@@ -35,6 +35,10 @@ export async function attemptWhatsappDelivery(deliveryId: number) {
     throw new Error("Delivery record not found");
   }
 
+  const bill = await prisma.bill.findUnique({
+    where: { id: delivery.billId },
+  });
+
   const settings = await getWhatsappSettings();
 
   // Log delivery attempt
@@ -61,9 +65,18 @@ export async function attemptWhatsappDelivery(deliveryId: number) {
     // Attempt real WhatsApp message delivery via daemon
     try {
       const { sendWhatsappMessage } = await import("./whatsapp-daemon");
+      
+      let messageText = `Hello ${delivery.customerName}, here is your invoice #${delivery.billNumber} from Shree Krishna Computer.`;
+      
+      if (delivery.customMessage) {
+        messageText = delivery.customMessage;
+      } else if (bill && Number(bill.dueAmount) > 0) {
+        messageText += `\n\n*Payment Reminder:* You have a pending due amount of ₹${bill.dueAmount}. Please settle it at your earliest convenience.`;
+      }
+
       await sendWhatsappMessage(
         delivery.mobileNumber,
-        `Hello ${delivery.customerName}, here is your invoice #${delivery.billNumber} from Shree Krishna Computer.`,
+        messageText,
         delivery.pdfPath,
         `SKC_Invoice_${delivery.billNumber}.pdf`
       );

@@ -27,9 +27,22 @@ export async function GET(req: Request) {
     if (overdueOnly) {
       const fifteenDaysAgo = new Date();
       fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+      
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
       whereClause.createdAt = {
         lt: fifteenDaysAgo,
       };
+
+      whereClause.AND = [
+        {
+          OR: [
+            { whatsappSentAt: null },
+            { whatsappSentAt: { lt: sevenDaysAgo } }
+          ]
+        }
+      ];
     }
 
     const dueBills = await prisma.bill.findMany({

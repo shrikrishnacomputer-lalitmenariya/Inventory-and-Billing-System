@@ -11,6 +11,7 @@ export default function DuePaymentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [settlingId, setSettlingId] = useState<number | null>(null);
+  const [sendingWhatsappId, setSendingWhatsappId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchDues();
@@ -43,8 +44,43 @@ export default function DuePaymentsPage() {
       });
       if (!res.ok) throw new Error("Failed to settle payment");
       
+      // Determine bill details before updating state
+      const existingBill = dues.find(d => d.id === billId);
+      
       // Remove from list since it's no longer due
       setDues(dues.filter(d => d.id !== billId));
+
+      // Send the settled invoice automatically if there's a phone number
+      if (existingBill && (existingBill.customer?.phone || existingBill.customerPhone)) {
+        try {
+          const fullBill = { 
+            ...existingBill, 
+            paymentStatus: "PAID", 
+            paidAmount: existingBill.totalAmount, 
+            dueAmount: 0,
+            isSettled: true 
+          };
+          
+          const { generateBillPdfBlob } = await import("@/lib/client-pdf");
+          const blob = await generateBillPdfBlob(fullBill);
+
+          const formData = new FormData();
+          formData.append("file", blob, `SKC_Invoice_${fullBill.billNumber}.pdf`);
+          formData.append("customerName", fullBill.customer?.name || "Customer");
+          formData.append("mobileNumber", fullBill.customer?.phone || fullBill.customerPhone);
+          formData.append("billNumber", fullBill.billNumber);
+          
+          const settledMsg = `🎉 *Payment Successful!*\n\nHello ${fullBill.customer?.name || 'Customer'},\nYour payment of ₹${existingBill.dueAmount} for Invoice #${fullBill.billNumber} has been completely settled.\n\nThank you for choosing *Shree Krishna Computer*.`;
+          formData.append("customMessage", settledMsg);
+
+          await fetch(`/api/v1/bills/${fullBill.id}/whatsapp/upload`, {
+            method: "POST",
+            body: formData,
+          });
+        } catch (e) {
+          console.error("Failed to send settled whatsapp message", e);
+        }
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to settle due payment. Please try again.");
@@ -60,10 +96,40 @@ export default function DuePaymentsPage() {
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const openWhatsApp = (phone: string, name: string, dueAmount: number, billNo: string) => {
-    const formattedPhone = phone.length === 10 ? `91${phone}` : phone;
-    const msg = `Hello ${name || "Customer"}, this is Shree Krishna Computer. Your pending due of ₹${dueAmount.toFixed(2)} from bill #${billNo} is overdue. Please settle it at your earliest convenience.`;
-    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+  const handleSendWhatsapp = async (bill: any) => {
+    const customerPhone = bill.customer?.phone || bill.customerPhone || "";
+    if (!customerPhone) {
+      alert("No customer phone number attached to this bill.");
+      return;
+    }
+    try {
+      setSendingWhatsappId(bill.id);
+      const { generateBillPdfBlob } = await import("@/lib/client-pdf");
+      const blob = await generateBillPdfBlob(bill);
+
+      const formData = new FormData();
+      formData.append("file", blob, `SKC_Invoice_${bill.billNumber}.pdf`);
+      formData.append("customerName", bill.customer?.name || "Customer");
+      formData.append("mobileNumber", customerPhone);
+      formData.append("billNumber", bill.billNumber);
+
+      const res = await fetch(`/api/v1/bills/${bill.id}/whatsapp/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Failed to send WhatsApp message");
+      } else {
+        alert("WhatsApp message with PDF sent successfully!");
+      }
+    } catch (err: any) {
+      console.error("WhatsApp send error:", err);
+      alert(err.message || "Failed to send WhatsApp message");
+    } finally {
+      setSendingWhatsappId(null);
+    }
   };
 
   return (
@@ -171,24 +237,17 @@ export default function DuePaymentsPage() {
                         <div className="flex justify-center items-center gap-3">
                           {bill.customer?.phone ? (
                             <>
-                              <a 
-                                href={`tel:${bill.customer.phone}`}
-                                className="text-gray-400 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 p-2 rounded-full transition"
-                                title="Call Customer"
-                              >
-                                <FaPhone />
-                              </a>
                               <button 
-                                onClick={() => openWhatsApp(
-                                  bill.customer.phone, 
-                                  bill.customer.name, 
-                                  parseFloat(bill.dueAmount), 
-                                  bill.billNumber
-                                )}
-                                className="text-gray-400 hover:text-green-600 bg-gray-100 hover:bg-green-50 p-2 rounded-full transition"
-                                title="Send WhatsApp Reminder"
+                                onClick={() => handleSendWhatsapp(bill)}
+                                disabled={sendingWhatsappId === bill.id}
+                                className="text-gray-400 hover:text-green-600 bg-gray-100 hover:bg-green-50 p-2 rounded-full transition disabled:opacity-50"
+                                title="Send WhatsApp Reminder with Invoice PDF"
                               >
-                                <FaWhatsapp className="text-[1.1rem]" />
+                                {sendingWhatsappId === bill.id ? (
+                                  <div className="animate-spin h-[1.1rem] w-[1.1rem] border-2 border-green-600 border-t-transparent rounded-full mx-auto" />
+                                ) : (
+                                  <FaWhatsapp className="text-[1.1rem]" />
+                                )}
                               </button>
                             </>
                           ) : (

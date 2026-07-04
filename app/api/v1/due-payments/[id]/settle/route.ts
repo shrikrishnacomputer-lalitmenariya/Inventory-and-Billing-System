@@ -35,6 +35,7 @@ export async function PATCH(
         paymentStatus: "PAID",
         paidAmount: currentBill.totalAmount, // Assuming they paid the remaining amount
         dueAmount: 0,
+        isSettled: true,
       },
     });
 
