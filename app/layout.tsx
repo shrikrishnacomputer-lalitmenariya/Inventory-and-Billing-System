@@ -8,13 +8,20 @@ const geistSans = Geist({
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  variable: "--font-geist-mono", 
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Mobile Shop POS",
-  description: "Inventory, Billing & Sales Analytics System",
+  title: "Shree Krishna Computers",
+  description: "Shree Krishna Computers provides computer sales, laptops, printers, accessories, networking solutions, GST billing, inventory management, and technical support.",
+  openGraph: {
+    title: "Shree Krishna Computers",
+    description: "Shree Krishna Computers provides computer sales, laptops, printers, accessories, networking solutions, GST billing, inventory management, and technical support.",
+    type: "website",
+    locale: "en_IN",
+    siteName: "Shree Krishna Computers",
+  },
 };
 
 export default function RootLayout({
