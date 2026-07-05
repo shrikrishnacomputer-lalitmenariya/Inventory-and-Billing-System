@@ -1,7 +1,14 @@
+import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { PrismaNeon } from '@prisma/adapter-neon'
+import { Pool, neonConfig } from '@neondatabase/serverless'
+import ws from 'ws'
+neonConfig.webSocketConstructor = ws
 
-const prisma = new PrismaClient()
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+const adapter = new PrismaNeon(pool as any)
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   // 1. Seed/Reset Users
