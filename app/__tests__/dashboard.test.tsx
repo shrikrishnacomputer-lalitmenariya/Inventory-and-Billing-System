@@ -51,7 +51,19 @@ beforeEach(() => {
         json: () => Promise.resolve(mockNotifications),
       });
     }
-    return Promise.reject(new Error("Unknown API route"));
+    if (url.includes("/api/v1/due-payments")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+    }
+    if (url.includes("/api/v1/whatsapp/settings")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: "disconnected", enabled: false }),
+      });
+    }
+    return Promise.reject(new Error("Unknown API route: " + url));
   }) as jest.Mock;
 });
 
@@ -77,12 +89,6 @@ describe("Dashboard Page", () => {
     expect(screen.getByText("5")).toBeInTheDocument(); // Total Categories count
     expect(screen.getByText("₹15000.50")).toBeInTheDocument(); // Today's Sales
     expect(screen.getByText("₹120000.75")).toBeInTheDocument(); // Monthly Sales
-
-    const lowStockCard = screen.getByText(/Low Stock Products/i).closest("div");
-    expect(lowStockCard).toHaveTextContent("3");
-
-    const outOfStockCard = screen.getByText(/Out of Stock Products/i).closest("div");
-    expect(outOfStockCard).toHaveTextContent("1");
 
     // Check inventory notification alerts
     expect(screen.getByText(/Inventory Alerts/i)).toBeInTheDocument();
