@@ -16,6 +16,7 @@
     "exceljs": "^4.4.0",
     "framer-motion": "^12.42.1",
     "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.2.1",
     "html5-qrcode": "^2.3.8",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.22.0",

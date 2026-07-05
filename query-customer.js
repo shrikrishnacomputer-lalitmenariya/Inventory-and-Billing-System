@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const customer = await prisma.customer.findFirst({
-    where: { phone: "6375591682" }
+    where: { phone: "9928203203" }
   });
   console.log(customer);
 }

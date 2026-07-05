@@ -67,3 +67,40 @@ export async function PUT(
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const userId = parseInt(id);
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Prevent deleting the owner
+    if (existingUser.role === "owner") {
+      return NextResponse.json({ error: "Cannot delete owner account" }, { status: 403 });
+    }
+
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
+  }
+}

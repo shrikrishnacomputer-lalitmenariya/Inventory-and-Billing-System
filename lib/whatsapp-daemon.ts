@@ -15,8 +15,13 @@ const sessionDir = path.join(process.cwd(), '..', 'session_auth_info');
 const ESSENTIAL_SESSION_FILES = ['creds.json'];
 const ESSENTIAL_PREFIXES = ['pre-key-', 'sender-key-', 'session-', 'app-state-sync'];
 
-let socketInstance: WASocket | null = null;
-let connectionActive = false;
+declare global {
+  var _whatsappSocket: WASocket | null;
+  var _whatsappConnectionActive: boolean;
+}
+
+let socketInstance: WASocket | null = global._whatsappSocket || null;
+let connectionActive = global._whatsappConnectionActive || false;
 
 /**
  * Purge non-essential files from session folder (chat history, device lists, LID mappings, etc.)
@@ -49,22 +54,22 @@ function purgeSessionJunk() {
 }
 
 export async function getWhatsappClient() {
-  if (socketInstance && connectionActive) {
-    return socketInstance;
+  if (global._whatsappSocket && global._whatsappConnectionActive) {
+    return global._whatsappSocket;
   }
   return null;
 }
 
 export async function initWhatsappSocket() {
-  if (socketInstance) {
-    return socketInstance;
+  if (global._whatsappSocket) {
+    return global._whatsappSocket;
   }
 
   // Ensure settings exist
   let settings = await prisma.whatsappSettings.findFirst();
   if (!settings) {
     settings = await prisma.whatsappSettings.create({
-      data: { ownerPhone: "6375591682", status: "disconnected" }
+      data: { ownerPhone: "9928203203", status: "disconnected" }
     });
   }
 
@@ -87,6 +92,7 @@ export async function initWhatsappSocket() {
   });
 
   socketInstance = sock;
+  global._whatsappSocket = sock;
 
   sock.ev.on('creds.update', saveCreds);
 
@@ -102,8 +108,9 @@ export async function initWhatsappSocket() {
     }
 
     if (connection === 'open') {
-      console.log('[WhatsApp] ✅ Connected successfully.');
       connectionActive = true;
+      global._whatsappConnectionActive = true;
+      console.log('[WhatsApp] ✅ Connected successfully.');
       await prisma.whatsappSettings.update({
         where: { id: settings.id },
         data: { status: "connected", qrCode: null }
@@ -122,6 +129,7 @@ export async function initWhatsappSocket() {
 
       if (!shouldReconnect) {
         socketInstance = null;
+        global._whatsappSocket = null;
         await prisma.whatsappSettings.update({
           where: { id: settings.id },
           data: { status: "disconnected", qrCode: null }
@@ -136,10 +144,11 @@ export async function initWhatsappSocket() {
       } else {
         // Purge junk before reconnecting
         purgeSessionJunk();
-        setTimeout(() => {
-          socketInstance = null;
-          initWhatsappSocket();
-        }, 5000);
+        connectionActive = false;
+        global._whatsappConnectionActive = false;
+        socketInstance = null;
+        global._whatsappSocket = null;
+        setTimeout(initWhatsappSocket, 5000);
       }
     }
   });
@@ -149,15 +158,17 @@ export async function initWhatsappSocket() {
 
 export async function disconnectWhatsapp() {
   const settings = await prisma.whatsappSettings.findFirst();
-  if (socketInstance) {
+  if (global._whatsappSocket) {
     try {
-      await socketInstance.logout();
+      await global._whatsappSocket.logout();
     } catch {
       // ignore logout errors
     }
     socketInstance = null;
+    global._whatsappSocket = null;
   }
   connectionActive = false;
+  global._whatsappConnectionActive = false;
   
   if (settings) {
     await prisma.whatsappSettings.update({
@@ -181,26 +192,26 @@ export async function sendWhatsappMessage(
   pdfPath?: string, 
   fileName?: string
 ) {
-  // Format mobile number to JID: e.g. 916375591682@s.whatsapp.net
+  // Format mobile number to JID: e.g. 919928203203@s.whatsapp.net
   let formattedNumber = to.replace(/[^0-9]/g, "");
   if (!formattedNumber.startsWith("91") && formattedNumber.length === 10) {
     formattedNumber = "91" + formattedNumber;
   }
   const jid = `${formattedNumber}@s.whatsapp.net`;
 
-  let client = socketInstance;
-  if (!client || !connectionActive) {
+  let client = global._whatsappSocket;
+  if (!client || !global._whatsappConnectionActive) {
     client = await initWhatsappSocket();
   }
 
   // Wait a moment if connecting
   let attempts = 0;
-  while (!connectionActive && attempts < 10) {
+  while (!global._whatsappConnectionActive && attempts < 10) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
     attempts++;
   }
 
-  if (!connectionActive || !client) {
+  if (!global._whatsappConnectionActive || !client) {
     throw new Error("WhatsApp device is not paired/connected.");
   }
 

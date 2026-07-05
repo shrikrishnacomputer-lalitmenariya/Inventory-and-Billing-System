@@ -16,6 +16,7 @@ export async function POST(
     const customerName = formData.get("customerName") as string || "Customer";
     const mobileNumber = formData.get("mobileNumber") as string || "";
     const billNumber = formData.get("billNumber") as string || "";
+    const customMessage = formData.get("customMessage") as string || null;
 
     if (!file) {
       return NextResponse.json({ error: "No PDF file provided" }, { status: 400 });
@@ -44,6 +45,7 @@ export async function POST(
         customerName,
         mobileNumber,
         pdfPath: relativePath,
+        customMessage,
         status: "pending",
       },
     });

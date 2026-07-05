@@ -116,6 +116,7 @@ model Bill {
   status           String      
   whatsappStatus   String?     @map("whatsapp_status") 
   whatsappSentAt   DateTime?   @map("whatsapp_sent_at")
+  isSettled        Boolean     @default(false) @map("is_settled")
   createdAt        DateTime    @default(now()) @map("created_at")
 
   customer         Customer?   @relation(fields: [customerId], references: [id])
@@ -196,6 +197,7 @@ model WhatsappDelivery {
   customerName  String    @map("customer_name")
   mobileNumber  String    @map("mobile_number")
   pdfPath       String    @map("pdf_path")
+  customMessage String?   @map("custom_message")
   status        String    @default("pending")
   failureReason String?   @map("failure_reason")
   sentAt        DateTime? @map("sent_at")

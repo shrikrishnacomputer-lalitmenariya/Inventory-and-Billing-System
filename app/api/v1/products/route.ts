@@ -29,9 +29,11 @@ export async function GET(req: Request) {
     }
 
     if (search) {
-      where.name = {
-        contains: search,
-      };
+      where.OR = [
+        { name: { contains: search } },
+        { brand: { contains: search } },
+        { barcode: { contains: search } },
+      ];
     }
 
     const products = await prisma.product.findMany({

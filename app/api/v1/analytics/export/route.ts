@@ -88,29 +88,23 @@ export async function GET(req: Request) {
       row.font = { name: "Arial", size: 10 };
 
       row.eachCell((cell, colNumber) => {
-        cell.alignment = { vertical: "middle" }; // Vertical center for all cells
+        // Center all cell data as requested
+        cell.alignment = { horizontal: "center", vertical: "middle" };
 
         const colKey = worksheet.columns[colNumber - 1].key;
 
         if (colKey === "billNumber") {
-          cell.alignment = { horizontal: "center", vertical: "middle" };
           cell.numFmt = "0";
         } else if (colKey === "date") {
-          cell.alignment = { horizontal: "center", vertical: "middle" };
-          cell.numFmt = "yyyy-mm-dd hh:mm"; // Date format
-        } else if (colKey === "customerName" || colKey === "billedBy") {
-          cell.alignment = { horizontal: "left", vertical: "middle" };
+          cell.numFmt = "dd/mm/yyyy hh:mm AM/PM"; // Exact date format
         } else if (colKey === "customerPhone") {
-          cell.alignment = { horizontal: "center", vertical: "middle" };
           cell.numFmt = "@"; // Text format (stops scientific notation in Excel)
           if (cell.value && cell.value !== "-") {
             cell.value = cell.value.toString(); // Ensure string type
           }
-        } else if (colKey === "paymentMode") {
-          cell.alignment = { horizontal: "center", vertical: "middle" };
         } else if (colKey === "subtotal" || colKey === "discount" || colKey === "grandTotal") {
-          cell.alignment = { horizontal: "right", vertical: "middle" };
-          cell.numFmt = "₹#,##0.00"; // Indian Rupee styling
+          // Indian Rupee styling but keep it centered
+          cell.numFmt = "₹#,##0.00"; 
         }
       });
     });
@@ -124,7 +118,9 @@ export async function GET(req: Request) {
         let valStr = "";
         if (cell.value !== null && cell.value !== undefined) {
           if (cell.value instanceof Date) {
-            valStr = "yyyy-mm-dd hh:mm".length.toString(); // Fixed Date len
+            valStr = "DD/MM/YYYY HH:MM AM/PM"; // Use sample string for length calculation
+          } else if (typeof cell.value === "number" && (column.key === "subtotal" || column.key === "discount" || column.key === "grandTotal")) {
+            valStr = `₹${cell.value.toFixed(2)}`; // Include Rupee symbol and decimals for length
           } else {
             valStr = cell.value.toString();
           }
@@ -134,7 +130,8 @@ export async function GET(req: Request) {
         }
       });
 
-      column.width = maxLen + 5; // Add extra padding dynamically for clear visibility
+      // Add extra padding dynamically for clear visibility (accounting for font variations)
+      column.width = maxLen + 4; 
     });
 
     // Write buffer and stream to client
