@@ -1,13 +1,21 @@
 import 'dotenv/config'
+console.log('DEBUG DATABASE_URL:', process.env.DATABASE_URL)
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { PrismaNeon } from '@prisma/adapter-neon'
-import { Pool, neonConfig } from '@neondatabase/serverless'
 import ws from 'ws'
+
+const { neonConfig } = require('@neondatabase/serverless')
 neonConfig.webSocketConstructor = ws
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-const adapter = new PrismaNeon(pool as any)
+// Additional debugging
+console.log('DATABASE_URL available:', !!process.env.DATABASE_URL)
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set')
+}
+
+const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
@@ -43,20 +51,34 @@ async function main() {
 
   console.log('Users seeded:', { admin, staff })
 
-  // 2. Seed/Upsert Parent Categories
-  // Ensure "Mobile" (id: 1)
-  const mobileCat = await prisma.category.upsert({
-    where: { id: 1 },
-    update: { name: 'Mobile', isActive: true },
-    create: { id: 1, name: 'Mobile', isActive: true },
+  // 2. Seed/Upsert Parent Categories (using findFirst + create/update pattern)
+  let mobileCat = await prisma.category.findFirst({
+    where: { name: 'Mobile', parentCategoryId: null }
   })
+  if (!mobileCat) {
+    mobileCat = await prisma.category.create({
+      data: { name: 'Mobile', isActive: true }
+    })
+  } else {
+    mobileCat = await prisma.category.update({
+      where: { id: mobileCat.id },
+      data: { isActive: true }
+    })
+  }
 
-  // Ensure "Accessories" (id: 2)
-  const accCat = await prisma.category.upsert({
-    where: { id: 2 },
-    update: { name: 'Accessories', isActive: true },
-    create: { id: 2, name: 'Accessories', isActive: true },
+  let accCat = await prisma.category.findFirst({
+    where: { name: 'Accessories', parentCategoryId: null }
   })
+  if (!accCat) {
+    accCat = await prisma.category.create({
+      data: { name: 'Accessories', isActive: true }
+    })
+  } else {
+    accCat = await prisma.category.update({
+      where: { id: accCat.id },
+      data: { isActive: true }
+    })
+  }
 
   // Ensure "Electronics"
   let elecCat = await prisma.category.findFirst({
@@ -65,6 +87,11 @@ async function main() {
   if (!elecCat) {
     elecCat = await prisma.category.create({
       data: { name: 'Electronics', isActive: true },
+    })
+  } else {
+    elecCat = await prisma.category.update({
+      where: { id: elecCat.id },
+      data: { isActive: true }
     })
   }
 
@@ -136,23 +163,28 @@ async function main() {
     }
   }
 
-  // 7. Cleanup legacy Smartphones category (ID 3)
-  const legacySmartphoneCat = await prisma.category.findUnique({
-    where: { id: 3 },
-  })
-  if (legacySmartphoneCat) {
-    // Re-verify that no products are still referencing categoryId = 3
-    const productCount = await prisma.product.count({
-      where: { categoryId: 3 },
+  // 7. Cleanup legacy Smartphones category (if exists and no products reference it)
+  try {
+    const legacySmartphoneCat = await prisma.category.findUnique({
+      where: { id: 3 },
     })
-    if (productCount === 0) {
-      await prisma.category.delete({
-        where: { id: 3 },
+    if (legacySmartphoneCat) {
+      // Re-verify that no products are still referencing categoryId = 3
+      const productCount = await prisma.product.count({
+        where: { categoryId: 3 },
       })
-      console.log('Deleted legacy Smartphones category (ID 3).')
-    } else {
-      console.warn(`Cannot delete category ID 3: ${productCount} products still referencing it.`)
+      if (productCount === 0) {
+        await prisma.category.delete({
+          where: { id: 3 },
+        })
+        console.log('Deleted legacy Smartphones category (ID 3).')
+      } else {
+        console.warn(`Cannot delete category ID 3: ${productCount} products still referencing it.`)
+      }
     }
+  } catch (err) {
+    // Category ID 3 might not exist or might be Electronics (no issue)
+    console.log('Category cleanup completed (or skipped).')
   }
 }
 

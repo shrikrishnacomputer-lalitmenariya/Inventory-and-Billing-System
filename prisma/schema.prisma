@@ -9,159 +9,153 @@ datasource db {
 }
 
 model User {
-  id               Int                @id @default(autoincrement())
-  name             String             
-  username         String             @unique 
-  email            String?            @unique
-  passwordHash     String             @map("password_hash") 
-  role             String             
-  isActive         Boolean            @default(true) @map("is_active")
-  createdAt        DateTime           @default(now()) @map("created_at")
-  stockInRecords   StockInRecord[]
-  bills            Bill[]
+  id                  Int                  @id @default(autoincrement())
+  name                String
+  username            String               @unique
+  email               String?              @unique
+  passwordHash        String               @map("password_hash")
+  role                String
+  isActive            Boolean              @default(true) @map("is_active")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  bills               Bill[]
   passwordResetTokens PasswordResetToken[]
+  stockInRecords      StockInRecord[]
 
   @@map("users")
 }
 
 model Category {
-  id               Int                @id @default(autoincrement())
-  name             String             
-  parentCategoryId Int?               @map("parent_category_id")
-  isActive         Boolean            @default(true) @map("is_active")
-  parentCategory   Category?          @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
-  subCategories    Category[]         @relation("CategoryHierarchy")
+  id               Int        @id @default(autoincrement())
+  name             String
+  parentCategoryId Int?       @map("parent_category_id")
+  isActive         Boolean    @default(true) @map("is_active")
+  parentCategory   Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  subCategories    Category[] @relation("CategoryHierarchy")
   products         Product[]
 
   @@map("categories")
 }
 
 model Product {
-  id                  Int                @id @default(autoincrement())
-  categoryId          Int                @map("category_id")
-  name                String             
-  barcode             String?            @unique
-  brand               String?            
-  productType         String             @map("product_type") 
-  costPrice           Decimal            @map("cost_price") 
-  sellingPrice        Decimal            @map("selling_price") 
-  quantityInStock     Int                @default(0) @map("quantity_in_stock")
-  lowStockThreshold   Int                @default(5) @map("low_stock_threshold")
-  imageUrl            String?            @map("image_url")
-  isActive            Boolean            @default(true) @map("is_active")
-  createdAt           DateTime           @default(now()) @map("created_at")
-  updatedAt           DateTime           @updatedAt @map("updated_at")
-
-  category            Category           @relation(fields: [categoryId], references: [id])
-  units               ProductUnit[]
-  stockInRecords      StockInRecord[]
-  billItems           BillItem[]
+  id                Int             @id @default(autoincrement())
+  categoryId        Int             @map("category_id")
+  name              String
+  barcode           String?         @unique
+  brand             String?
+  productType       String          @map("product_type")
+  costPrice         Decimal         @map("cost_price")
+  sellingPrice      Decimal         @map("selling_price")
+  quantityInStock   Int             @default(0) @map("quantity_in_stock")
+  lowStockThreshold Int             @default(5) @map("low_stock_threshold")
+  imageUrl          String?         @map("image_url")
+  isActive          Boolean         @default(true) @map("is_active")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  billItems         BillItem[]
+  units             ProductUnit[]
+  category          Category        @relation(fields: [categoryId], references: [id])
+  stockInRecords    StockInRecord[]
 
   @@map("products")
 }
 
 model ProductUnit {
-  id            Int         @id @default(autoincrement())
-  productId     Int         @map("product_id")
-  imeiNumber    String      @unique @map("imei_number") 
-  status        String      
-  costPrice     Decimal     @map("cost_price") 
-  addedAt       DateTime    @default(now()) @map("added_at")
-  soldAt        DateTime?   @map("sold_at")
-
-  product       Product     @relation(fields: [productId], references: [id])
-  billItems     BillItem[]
+  id         Int        @id @default(autoincrement())
+  productId  Int        @map("product_id")
+  imeiNumber String     @unique @map("imei_number")
+  status     String
+  costPrice  Decimal    @map("cost_price")
+  addedAt    DateTime   @default(now()) @map("added_at")
+  soldAt     DateTime?  @map("sold_at")
+  billItems  BillItem[]
+  product    Product    @relation(fields: [productId], references: [id])
 
   @@map("product_units")
 }
 
 model StockInRecord {
-  id             Int       @id @default(autoincrement())
-  productId      Int       @map("product_id")
-  quantityAdded  Int       @map("quantity_added")
-  costPrice      Decimal   @map("cost_price") 
-  addedByUserId  Int       @map("added_by_user_id")
-  createdAt      DateTime  @default(now()) @map("created_at")
-
-  product        Product   @relation(fields: [productId], references: [id])
-  user           User      @relation(fields: [addedByUserId], references: [id])
+  id            Int      @id @default(autoincrement())
+  productId     Int      @map("product_id")
+  quantityAdded Int      @map("quantity_added")
+  costPrice     Decimal  @map("cost_price")
+  addedByUserId Int      @map("added_by_user_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  user          User     @relation(fields: [addedByUserId], references: [id])
+  product       Product  @relation(fields: [productId], references: [id])
 
   @@map("stock_in_records")
 }
 
 model Customer {
-  id      Int      @id @default(autoincrement())
-  name    String?  
-  phone   String?  
-  bills   Bill[]
+  id    Int     @id @default(autoincrement())
+  name  String?
+  phone String?
+  bills Bill[]
 
   @@map("customers")
 }
 
 model Bill {
-  id               Int         @id @default(autoincrement())
-  billNumber       String      @unique @map("bill_number") 
-  customerId       Int?        @map("customer_id")
-  createdByUserId  Int         @map("created_by_user_id")
-  subtotal         Decimal     
-  discount         Decimal     @default(0) 
-  sgstPercent      Decimal     @default(0) @map("sgst_percent")
-  cgstPercent      Decimal     @default(0) @map("cgst_percent")
-  sgstAmount       Decimal     @default(0) @map("sgst_amount")
-  cgstAmount       Decimal     @default(0) @map("cgst_amount")
-  totalAmount      Decimal     @map("total_amount") 
-  paidAmount       Decimal     @default(0) @map("paid_amount")
-  dueAmount        Decimal     @default(0) @map("due_amount")
-  paymentStatus    String      @default("PAID") @map("payment_status")
-  paymentMode      String      @map("payment_mode") 
-  status           String      
-  whatsappStatus   String?     @map("whatsapp_status") 
-  whatsappSentAt   DateTime?   @map("whatsapp_sent_at")
-  isSettled        Boolean     @default(false) @map("is_settled")
-  createdAt        DateTime    @default(now()) @map("created_at")
-
-  customer         Customer?   @relation(fields: [customerId], references: [id])
-  user             User        @relation(fields: [createdByUserId], references: [id])
-  billItems        BillItem[]
-  financeRecord    FinanceRecord?
+  id              Int            @id @default(autoincrement())
+  billNumber      String         @unique @map("bill_number")
+  customerId      Int?           @map("customer_id")
+  createdByUserId Int            @map("created_by_user_id")
+  subtotal        Decimal
+  discount        Decimal        @default(0)
+  sgstPercent     Decimal        @default(0) @map("sgst_percent")
+  cgstPercent     Decimal        @default(0) @map("cgst_percent")
+  sgstAmount      Decimal        @default(0) @map("sgst_amount")
+  cgstAmount      Decimal        @default(0) @map("cgst_amount")
+  totalAmount     Decimal        @map("total_amount")
+  paidAmount      Decimal        @default(0) @map("paid_amount")
+  dueAmount       Decimal        @default(0) @map("due_amount")
+  paymentStatus   String         @default("PAID") @map("payment_status")
+  paymentMode     String         @map("payment_mode")
+  status          String
+  whatsappStatus  String?        @map("whatsapp_status")
+  whatsappSentAt  DateTime?      @map("whatsapp_sent_at")
+  isSettled       Boolean        @default(false) @map("is_settled")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  billItems       BillItem[]
+  user            User           @relation(fields: [createdByUserId], references: [id])
+  customer        Customer?      @relation(fields: [customerId], references: [id])
+  financeRecord   FinanceRecord?
 
   @@map("bills")
 }
 
 model BillItem {
-  id              Int          @id @default(autoincrement())
-  billId          Int          @map("bill_id")
-  productId       Int          @map("product_id")
-  productUnitId   Int?         @map("product_unit_id")
-  quantity        Int
-  unitPrice       Decimal      @map("unit_price") 
-  lineTotal       Decimal      @map("line_total") 
-
-  bill            Bill         @relation(fields: [billId], references: [id])
-  product         Product      @relation(fields: [productId], references: [id])
-  productUnit     ProductUnit? @relation(fields: [productUnitId], references: [id])
+  id            Int          @id @default(autoincrement())
+  billId        Int          @map("bill_id")
+  productId     Int          @map("product_id")
+  productUnitId Int?         @map("product_unit_id")
+  quantity      Int
+  unitPrice     Decimal      @map("unit_price")
+  lineTotal     Decimal      @map("line_total")
+  bill          Bill         @relation(fields: [billId], references: [id])
+  product       Product      @relation(fields: [productId], references: [id])
+  productUnit   ProductUnit? @relation(fields: [productUnitId], references: [id])
 
   @@map("bill_items")
 }
 
 model FinanceProvider {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
+  id        Int             @id @default(autoincrement())
+  name      String          @unique
+  isActive  Boolean         @default(true) @map("is_active")
+  createdAt DateTime        @default(now()) @map("created_at")
   records   FinanceRecord[]
 
   @@map("finance_providers")
 }
 
 model FinanceRecord {
-  id                Int      @id @default(autoincrement())
-  billId            Int      @unique @map("bill_id")
-  financeProviderId Int      @map("finance_provider_id")
-  emiAmount         Decimal  @map("emi_amount")
+  id                Int             @id @default(autoincrement())
+  billId            Int             @unique @map("bill_id")
+  financeProviderId Int             @map("finance_provider_id")
+  emiAmount         Decimal         @map("emi_amount")
   months            Int?
-  createdAt         DateTime @default(now()) @map("created_at")
-
+  createdAt         DateTime        @default(now()) @map("created_at")
   bill              Bill            @relation(fields: [billId], references: [id])
   financeProvider   FinanceProvider @relation(fields: [financeProviderId], references: [id])
 
@@ -174,7 +168,6 @@ model PasswordResetToken {
   token     String   @unique
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
-
   user      User     @relation(fields: [userId], references: [id])
 
   @@map("password_reset_tokens")
