@@ -242,7 +242,7 @@ export default function Footer() {
                 const isClickable = item.href !== undefined;
                 return (
                   <div key={idx} className="flex items-start justify-start gap-3">
-                    <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-450 shrink-0 mt-0.5">
+                    <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 shrink-0 mt-0.5">
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex flex-col min-w-0 text-left">

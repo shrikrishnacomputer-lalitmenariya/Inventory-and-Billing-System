@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion, Variants } from "framer-motion";
-import { ArrowRight, LogIn } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function Hero() {
   // Stagger entry animations
@@ -52,7 +52,7 @@ export default function Hero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.5, ease: "easeOut" }}
-        className="absolute inset-y-0 right-0 w-full lg:w-[60%] pointer-events-none z-10"
+        className="absolute inset-y-0 right-0 w-full lg:w-[60%] pointer-events-none z-10 hidden lg:block"
         style={{
           maskImage: "linear-gradient(to right, transparent 0%, black 25%, black 100%)",
           WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 25%, black 100%)",
@@ -84,6 +84,22 @@ export default function Hero() {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-30 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           
+          {/* On Mobile: Storefront Image rendered at the top, hidden on desktop */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="block lg:hidden w-full aspect-[1162/1280] relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.5)]"
+          >
+            <Image
+              src="/ShreeKrishnaHero.webp"
+              alt="Shree Krishna Computers Storefront"
+              fill
+              priority
+              className="object-cover object-center"
+            />
+          </motion.div>
+
           {/* Left Column: Glassmorphic Content Card */}
           <motion.div
             variants={containerVariants}
@@ -128,13 +144,6 @@ export default function Hero() {
               >
                 Contact Us
                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
-              </Link>
-              <Link
-                href="/login"
-                className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 px-7 py-3.5 text-sm font-bold text-white hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 gap-2 shrink-0 cursor-pointer"
-              >
-                Owner Login
-                <LogIn className="h-4 w-4 opacity-80" />
               </Link>
             </motion.div>
           </motion.div>

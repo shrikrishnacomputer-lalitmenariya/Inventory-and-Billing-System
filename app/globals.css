@@ -2,7 +2,14 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #020617;
+    --foreground: #f8fafc;
+  }
 }
 
 @theme inline {
@@ -26,8 +33,18 @@ h3:not(.glass-card h3),
 h4:not(.glass-card h4),
 h5:not(.glass-card h5),
 h6:not(.glass-card h6) {
-  color: #111827;
-  /* text-gray-900 */
+  color: #0f172a;
+}
+
+@media (prefers-color-scheme: dark) {
+  h1:not(.glass-card h1),
+  h2:not(.glass-card h2),
+  h3:not(.glass-card h3),
+  h4:not(.glass-card h4),
+  h5:not(.glass-card h5),
+  h6:not(.glass-card h6) {
+    color: #f8fafc;
+  }
 }
 
 /* Force high visibility on all form inputs and controls, EXCEPT inside glass-card */

@@ -91,8 +91,8 @@ export default function About() {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {specialties.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                    <CheckCircle2 className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <div key={idx} className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                    <CheckCircle2 className="h-4 w-4 text-blue-500/70 dark:text-blue-400/60 shrink-0" />
                     <span className="text-sm font-semibold">{item}</span>
                   </div>
                 ))}

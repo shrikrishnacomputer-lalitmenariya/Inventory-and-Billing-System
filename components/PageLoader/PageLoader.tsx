@@ -103,7 +103,7 @@ export default function PageLoader({ onComplete }: PageLoaderProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.4 }}
           transition={{ duration: 0.4, delay: 0.5 }}
-          className="text-[10px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-widest"
+          className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest"
         >
           Loading {Math.min(Math.round(progress), 100)}%
         </motion.span>

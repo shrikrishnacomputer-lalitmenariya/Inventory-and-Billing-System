@@ -108,7 +108,7 @@ ${formData.message}`;
   };
 
   return (
-    <section id="contact" className="relative py-24 bg-slate-50/30 dark:bg-slate-955 scroll-mt-16 overflow-hidden">
+    <section id="contact" className="relative py-24 bg-slate-50/30 dark:bg-slate-950 scroll-mt-16 overflow-hidden">
       {/* Background Grid & Blur Blobs */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_100%,#000_70%,transparent_100%)] opacity-60 dark:opacity-35 pointer-events-none" />
 
@@ -177,7 +177,7 @@ ${formData.message}`;
               <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white">
                 Shree Krishna Computers
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-450 leading-relaxed font-medium">
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                 Your trusted local computer and electronics destination. We supply authentic brands, provide smart EMI setups, and offer professional repair and installation services.
               </p>
             </motion.div>
@@ -210,7 +210,7 @@ ${formData.message}`;
                       {phoneCard.value}
                     </a>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-455 mt-4 font-semibold leading-relaxed">{phoneCard.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 font-semibold leading-relaxed">{phoneCard.description}</p>
                 </motion.div>
 
                 {/* Location Card */}
@@ -238,7 +238,7 @@ ${formData.message}`;
                       {addressCard.value}
                     </a>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-455 mt-4 font-semibold leading-relaxed">{addressCard.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 font-semibold leading-relaxed">{addressCard.description}</p>
                 </motion.div>
               </div>
 
@@ -267,7 +267,7 @@ ${formData.message}`;
                       {emailCard.value}
                     </a>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-455 mt-4 font-semibold leading-relaxed">{emailCard.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 font-semibold leading-relaxed">{emailCard.description}</p>
                 </motion.div>
 
                 {/* Hours Card */}
@@ -289,7 +289,7 @@ ${formData.message}`;
                     <p className="text-sm font-extrabold text-slate-800 dark:text-white mt-2">{hoursCard.value}</p>
                     <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1">{hoursCard.labelSuffix}</p>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-450 mt-4 font-semibold leading-relaxed">{hoursCard.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 font-semibold leading-relaxed">{hoursCard.description}</p>
                 </motion.div>
               </div>
 
@@ -304,7 +304,7 @@ ${formData.message}`;
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-7 backdrop-blur-xl bg-white/60 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850 rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden"
+            className="lg:col-span-7 backdrop-blur-xl bg-white/60 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800 rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden"
           >
             {/* Subtle glow blob behind the form */}
             <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -392,7 +392,7 @@ ${formData.message}`;
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Name Field */}
                     <div className="relative group/field">
-                      <div className="absolute left-4 top-3.5 text-slate-450 dark:text-slate-500 group-focus-within/field:text-blue-500 transition-colors pointer-events-none">
+                      <div className="absolute left-4 top-3.5 text-slate-400 dark:text-slate-500 group-focus-within/field:text-blue-500 transition-colors pointer-events-none">
                         <User className="h-5 w-5" />
                       </div>
                       <input
@@ -410,7 +410,7 @@ ${formData.message}`;
                         className={`absolute left-12 duration-300 pointer-events-none font-semibold origin-[0] transition-all
                           ${formData.name 
                             ? "scale-75 -translate-y-7 text-blue-600 dark:text-blue-400" 
-                            : "scale-100 translate-y-3.5 text-slate-450 dark:text-slate-550"
+                            : "scale-100 translate-y-3.5 text-slate-400 dark:text-slate-500"
                           } 
                           peer-focus:scale-75 peer-focus:-translate-y-7 peer-focus:text-blue-600 dark:peer-focus:text-blue-400
                         `}
@@ -421,7 +421,7 @@ ${formData.message}`;
 
                     {/* Phone Field */}
                     <div className="relative group/field">
-                      <div className="absolute left-4 top-3.5 text-slate-450 dark:text-slate-500 group-focus-within/field:text-blue-500 transition-colors pointer-events-none">
+                      <div className="absolute left-4 top-3.5 text-slate-400 dark:text-slate-500 group-focus-within/field:text-blue-500 transition-colors pointer-events-none">
                         <Phone className="h-5 w-5" />
                       </div>
                       <input
@@ -439,7 +439,7 @@ ${formData.message}`;
                         className={`absolute left-12 duration-300 pointer-events-none font-semibold origin-[0] transition-all
                           ${formData.phone 
                             ? "scale-75 -translate-y-7 text-blue-600 dark:text-blue-400" 
-                            : "scale-100 translate-y-3.5 text-slate-450 dark:text-slate-555"
+                            : "scale-100 translate-y-3.5 text-slate-400 dark:text-slate-500"
                           } 
                           peer-focus:scale-75 peer-focus:-translate-y-7 peer-focus:text-blue-600 dark:peer-focus:text-blue-400
                         `}
@@ -451,7 +451,7 @@ ${formData.message}`;
 
                   {/* Email Field */}
                   <div className="relative group/field">
-                    <div className="absolute left-4 top-3.5 text-slate-450 dark:text-slate-500 group-focus-within/field:text-blue-550 transition-colors pointer-events-none">
+                    <div className="absolute left-4 top-3.5 text-slate-400 dark:text-slate-500 group-focus-within/field:text-blue-500 transition-colors pointer-events-none">
                       <Mail className="h-5 w-5" />
                     </div>
                     <input
@@ -469,7 +469,7 @@ ${formData.message}`;
                       className={`absolute left-12 duration-300 pointer-events-none font-semibold origin-[0] transition-all
                         ${formData.email 
                           ? "scale-75 -translate-y-7 text-blue-600 dark:text-blue-400" 
-                          : "scale-100 translate-y-3.5 text-slate-450 dark:text-slate-555"
+                          : "scale-100 translate-y-3.5 text-slate-400 dark:text-slate-500"
                         } 
                         peer-focus:scale-75 peer-focus:-translate-y-7 peer-focus:text-blue-600 dark:peer-focus:text-blue-400
                       `}
@@ -480,7 +480,7 @@ ${formData.message}`;
 
                   {/* Message Field */}
                   <div className="relative group/field">
-                    <div className="absolute left-4 top-4 text-slate-450 dark:text-slate-500 group-focus-within/field:text-blue-500 transition-colors pointer-events-none">
+                    <div className="absolute left-4 top-4 text-slate-400 dark:text-slate-500 group-focus-within/field:text-blue-500 transition-colors pointer-events-none">
                       <MessageSquare className="h-5 w-5" />
                     </div>
                     <textarea
@@ -498,7 +498,7 @@ ${formData.message}`;
                       className={`absolute left-12 duration-300 pointer-events-none font-semibold origin-[0] transition-all
                         ${formData.message 
                           ? "scale-75 -translate-y-7 text-blue-600 dark:text-blue-400" 
-                          : "scale-100 translate-y-3.5 text-slate-450 dark:text-slate-555"
+                          : "scale-100 translate-y-3.5 text-slate-400 dark:text-slate-500"
                         } 
                         peer-focus:scale-75 peer-focus:-translate-y-7 peer-focus:text-blue-600 dark:peer-focus:text-blue-400
                       `}

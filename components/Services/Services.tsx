@@ -66,7 +66,7 @@ export default function Services() {
       title: "Smart Watches",
       description: "Latest smart watches with modern features for fitness, productivity, and everyday convenience.",
       icon: Watch,
-      color: "text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-955/30 border-amber-100 dark:border-amber-900/40",
+      color: "text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/40",
     },
     {
       title: "Headphones & Speakers",
@@ -87,30 +87,30 @@ export default function Services() {
       title: "Genuine Products",
       description: "We offer original products from trusted brands for complete peace of mind.",
       icon: ShieldCheck,
-      color: "text-blue-600 bg-blue-50/50 border-blue-100 dark:bg-blue-955/20 dark:border-blue-900/45",
+      color: "text-blue-600 bg-blue-50/50 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/45",
     },
     {
       title: "Affordable Pricing",
       description: "Competitive prices with excellent value for money.",
       icon: Tag,
-      color: "text-green-600 bg-green-50/50 border-green-100 dark:bg-green-955/20 dark:border-green-900/45",
+      color: "text-green-600 bg-green-50/50 border-green-100 dark:bg-green-950/20 dark:border-green-900/45",
     },
     {
       title: "Expert Support",
       description: "Friendly guidance before and after every purchase.",
       icon: HeartHandshake,
-      color: "text-purple-600 bg-purple-50/50 border-purple-100 dark:bg-purple-955/20 dark:border-purple-900/45",
+      color: "text-purple-600 bg-purple-50/50 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900/45",
     },
     {
       title: "Trusted Local Store",
       description: "Serving customers with honesty, quality, and dependable service.",
       icon: Smile,
-      color: "text-orange-600 bg-orange-50/50 border-orange-100 dark:bg-orange-955/20 dark:border-orange-900/45",
+      color: "text-orange-600 bg-orange-50/50 border-orange-100 dark:bg-orange-950/20 dark:border-orange-900/45",
     },
   ];
 
   return (
-    <div className="relative overflow-hidden bg-slate-50/30 dark:bg-slate-955">
+    <div className="relative overflow-hidden bg-slate-50/30 dark:bg-slate-950">
       {/* Background blobs & patterns */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-60 dark:opacity-35 pointer-events-none" />
       
@@ -172,7 +172,7 @@ export default function Services() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.05 }}
-                  className="group relative bg-gradient-to-b from-slate-50/50 to-white/80 dark:from-slate-900/60 dark:to-slate-905/40 rounded-2xl p-7 shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5 border border-slate-200/60 dark:border-slate-800/80 hover:border-blue-500/50 dark:hover:border-blue-400/50 transition-all duration-500 flex flex-col justify-between hover:-translate-y-2 cursor-pointer overflow-hidden min-h-[220px]"
+                  className="group relative bg-gradient-to-b from-slate-50/50 to-white/80 dark:from-slate-900/60 dark:to-slate-950/40 rounded-2xl p-7 shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 dark:hover:shadow-blue-500/5 border border-slate-200/60 dark:border-slate-800/80 hover:border-blue-500/50 dark:hover:border-blue-400/50 transition-all duration-500 flex flex-col justify-between hover:-translate-y-2 cursor-pointer overflow-hidden min-h-[220px]"
                 >
                   {/* Top Light-up Line */}
                   <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-blue-500 via-cyan-400 to-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl pointer-events-none" />
@@ -187,7 +187,7 @@ export default function Services() {
                     </div>
 
                     {/* Card Info */}
-                    <h3 className="text-xl font-extrabold text-slate-850 dark:text-slate-100 mt-6 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors tracking-tight">
+                    <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 mt-6 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors tracking-tight">
                       {service.title}
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 leading-relaxed font-medium">
@@ -203,7 +203,7 @@ export default function Services() {
       </section>
 
       {/* Why Choose Us Section */}
-      <section id="why-choose-us" className="py-24 relative z-10 border-t border-slate-150/60 dark:border-slate-900/60 bg-white/20 dark:bg-slate-955/20 backdrop-blur-sm">
+      <section id="why-choose-us" className="py-24 relative z-10 border-t border-slate-200/60 dark:border-slate-900/60 bg-white/20 dark:bg-slate-950/20 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Header */}
@@ -238,7 +238,7 @@ export default function Services() {
                   <div className={`p-4 rounded-full border mb-5 transition-transform duration-500 group-hover:rotate-[10deg] ${item.color}`}>
                     <IconComponent className="h-6 w-6" />
                   </div>
-                  <h3 className="text-lg font-extrabold text-slate-805 dark:text-slate-100 tracking-tight">
+                  <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
                     {item.title}
                   </h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 leading-relaxed font-semibold">
