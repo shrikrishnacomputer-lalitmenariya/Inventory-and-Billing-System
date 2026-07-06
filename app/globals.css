@@ -20,23 +20,39 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-h1:not(.glass-card h1), h2:not(.glass-card h2), h3:not(.glass-card h3), h4:not(.glass-card h4), h5:not(.glass-card h5), h6:not(.glass-card h6) {
-  color: #111827; /* text-gray-900 */
+h1:not(.glass-card h1),
+h2:not(.glass-card h2),
+h3:not(.glass-card h3),
+h4:not(.glass-card h4),
+h5:not(.glass-card h5),
+h6:not(.glass-card h6) {
+  color: #111827;
+  /* text-gray-900 */
 }
 
 /* Force high visibility on all form inputs and controls, EXCEPT inside glass-card */
-input:not(.glass-card input), select:not(.glass-card select), textarea:not(.glass-card textarea) {
-  color: #111827 !important; /* text-gray-900 */
-  background-color: #ffffff !important; /* bg-white */
-  border: 1px solid #9ca3af !important; /* border-gray-400 */
+input:not(.glass-card input),
+select:not(.glass-card select),
+textarea:not(.glass-card textarea) {
+  color: #111827 !important;
+  /* text-gray-900 */
+  background-color: #ffffff !important;
+  /* bg-white */
+  border: 1px solid #9ca3af !important;
+  /* border-gray-400 */
 }
 
-input::placeholder, textarea::placeholder {
-  color: #4b5563 !important; /* text-gray-600 */
+input::placeholder,
+textarea::placeholder {
+  color: #4b5563 !important;
+  /* text-gray-600 */
 }
 
-input:focus, select:focus, textarea:focus {
-  border-color: #2563eb !important; /* border-blue-600 */
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #2563eb !important;
+  /* border-blue-600 */
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
 }
 
@@ -71,7 +87,7 @@ input[type="number"] {
   -webkit-backdrop-filter: blur(16px);
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
+  box-shadow:
     0 16px 40px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
     inset 0 -1px 0 rgba(255, 255, 255, 0.1);
@@ -86,12 +102,10 @@ input[type="number"] {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.8),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.8),
+      transparent);
   pointer-events: none;
 }
 
@@ -102,11 +116,9 @@ input[type="number"] {
   left: 0;
   width: 1px;
   height: 100%;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.8),
-    transparent,
-    rgba(255, 255, 255, 0.3)
-  );
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.8),
+      transparent,
+      rgba(255, 255, 255, 0.3));
   pointer-events: none;
 }
