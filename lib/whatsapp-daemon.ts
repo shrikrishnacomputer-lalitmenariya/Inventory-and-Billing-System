@@ -263,8 +263,6 @@ export async function sendWhatsappMessage(
   }
   jid = jid + '@s.whatsapp.net';
 
-  await globalWhatsappSocket.sendMessage(jid, { text });
-
   if ((pdfPath || pdfBase64) && pdfFilename) {
     let pdfBuffer: Buffer | null = null;
     
@@ -285,10 +283,16 @@ export async function sendWhatsappMessage(
         document: pdfBuffer,
         mimetype: 'application/pdf',
         fileName: pdfFilename,
+        caption: text // Add text as caption to the PDF
       });
+      console.log(`✅ Local daemon message sent to ${phone} (with PDF)`);
+      return; // Exit early since text was sent as caption
     }
   }
-  console.log(`✅ Local daemon message sent to ${phone}`);
+  
+  // Fallback: Send text only if no PDF was provided or buffer failed
+  await globalWhatsappSocket.sendMessage(jid, { text });
+  console.log(`✅ Local daemon message sent to ${phone} (text only)`);
 }
 
 export { globalWhatsappSocket, globalConnectionActive };
