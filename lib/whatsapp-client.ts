@@ -54,15 +54,15 @@ export async function botDisconnect() {
   return botFetch("/disconnect", { method: "POST" });
 }
 
-/** Send a WhatsApp message through the bot */
 export async function botSendMessage(
   phone: string,
   text: string,
   pdfUrl?: string,
-  pdfFilename?: string
+  pdfFilename?: string,
+  pdfBase64?: string
 ) {
   return botFetch("/send", {
     method: "POST",
-    body: JSON.stringify({ phone, text, pdfUrl, pdfFilename }),
+    body: JSON.stringify({ phone, text, pdfUrl, pdfFilename, pdfBase64 }),
   });
 }

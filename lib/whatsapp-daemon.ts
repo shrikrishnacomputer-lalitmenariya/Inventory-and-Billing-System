@@ -246,7 +246,13 @@ export async function disconnectWhatsapp() {
   }
 }
 
-export async function sendWhatsappMessage(phone: string, text: string, pdfPath?: string, pdfFilename?: string) {
+export async function sendWhatsappMessage(
+  phone: string, 
+  text: string, 
+  pdfPath?: string, 
+  pdfFilename?: string, 
+  pdfBase64?: string
+) {
   if (!globalWhatsappSocket) {
     throw new Error('WhatsApp is not connected');
   }
@@ -259,12 +265,15 @@ export async function sendWhatsappMessage(phone: string, text: string, pdfPath?:
 
   await globalWhatsappSocket.sendMessage(jid, { text });
 
-  if (pdfPath && pdfFilename) {
+  if ((pdfPath || pdfBase64) && pdfFilename) {
     let pdfBuffer: Buffer | null = null;
-    if (pdfPath.startsWith('http')) {
+    
+    if (pdfBase64) {
+      pdfBuffer = Buffer.from(pdfBase64, 'base64');
+    } else if (pdfPath?.startsWith('http')) {
       const response = await fetch(pdfPath);
       pdfBuffer = Buffer.from(await response.arrayBuffer());
-    } else {
+    } else if (pdfPath) {
       const fullPath = path.resolve(process.cwd(), 'public', pdfPath);
       if (fs.existsSync(fullPath)) {
         pdfBuffer = fs.readFileSync(fullPath);

@@ -26,7 +26,7 @@ export async function logWhatsappEvent(
   });
 }
 
-export async function attemptWhatsappDelivery(deliveryId: number) {
+export async function attemptWhatsappDelivery(deliveryId: number, pdfBase64?: string) {
   const delivery = await prisma.whatsappDelivery.findUnique({
     where: { id: deliveryId },
   });
@@ -79,7 +79,8 @@ export async function attemptWhatsappDelivery(deliveryId: number) {
           delivery.mobileNumber,
           messageText,
           delivery.pdfPath,
-          `SKC_Invoice_${delivery.billNumber}.pdf`
+          `SKC_Invoice_${delivery.billNumber}.pdf`,
+          pdfBase64
         );
       } else {
         const { sendWhatsappMessage } = await import("./whatsapp-daemon");
@@ -87,7 +88,8 @@ export async function attemptWhatsappDelivery(deliveryId: number) {
           delivery.mobileNumber,
           messageText,
           delivery.pdfPath,
-          `SKC_Invoice_${delivery.billNumber}.pdf`
+          `SKC_Invoice_${delivery.billNumber}.pdf`,
+          pdfBase64
         );
       }
     } catch (error: any) {

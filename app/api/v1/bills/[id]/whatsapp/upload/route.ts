@@ -26,16 +26,11 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "invoices");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
+    // We cannot save files to /public in Vercel Serverless (read-only filesystem)
+    // So we will just store a virtual path in the DB and pass the base64 directly to the delivery function.
     const filename = `SKC_Invoice_${billNumber}.pdf`;
-    const filepath = path.join(uploadDir, filename);
-    fs.writeFileSync(filepath, buffer);
-
     const relativePath = `uploads/invoices/${filename}`;
+    const base64String = buffer.toString('base64');
 
     // Create delivery record
     const delivery = await prisma.whatsappDelivery.create({
@@ -60,12 +55,12 @@ export async function POST(
       billId,
       billNumber,
       "WhatsApp Queued",
-      `Invoice PDF saved and delivery queued for ${customerName} (${mobileNumber})`
+      `Invoice PDF delivery queued for ${customerName} (${mobileNumber})`
     );
 
     // In Vercel serverless, we MUST await background tasks or they get killed
     try {
-      await attemptWhatsappDelivery(delivery.id);
+      await attemptWhatsappDelivery(delivery.id, base64String);
     } catch (err) {
       console.error("WhatsApp delivery failed:", err);
       // We still return success since the PDF uploaded and delivery was queued/failed gracefully
