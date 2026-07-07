@@ -37,7 +37,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                     Next.js 16 (App Router)                  │
+│                     Vercel (Serverless)                      │
 │                                                              │
 │   ┌──────────────┐   ┌──────────────┐   ┌────────────────┐  │
 │   │   React 19    │   │  API Routes  │   │   Middleware    │  │
@@ -45,14 +45,17 @@
 │   └──────┬───────┘   └──────┬───────┘   └───────┬────────┘  │
 │          │                  │                    │            │
 │   ┌──────┴──────────────────┴────────────────────┴────────┐  │
-│   │                 Prisma ORM  →  SQLite                  │  │
+│   │            Neon PostgreSQL via Prisma ORM              │  │
 │   └────────────────────────────────────────────────────────┘  │
-│   ┌────────────────────────────────────────────────────────┐  │
-│   │           WhatsApp Daemon (@whiskeysockets/baileys)     │  │
-│   └────────────────────────────────────────────────────────┘  │
-│   ┌────────────────────────────────────────────────────────┐  │
-│   │          PDF Engine (jsPDF + html2canvas-pro)           │  │
-│   └────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────┬────────────────┘
+                                              │ HTTP + Base64 PDFs
+┌─────────────────────────────────────────────▼────────────────┐
+│                     Railway (Container)                      │
+│                                                              │
+│   ┌──────────────────────────────────────────────────────┐  │
+│   │          WhatsApp Microservice (Express.js)           │  │
+│   │              (@whiskeysockets/baileys)                │  │
+│   └──────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -62,11 +65,11 @@
 |:---|:---|
 | **Framework** | Next.js 16 (App Router, Turbopack) |
 | **UI** | React 19 · Tailwind CSS 4 · Recharts · React Icons |
-| **Backend** | Next.js API Routes (RESTful) |
-| **Database** | SQLite via Prisma ORM 6 |
+| **Backend** | Next.js API Routes (Serverless) |
+| **Database** | Neon PostgreSQL via Prisma ORM 6 |
 | **Auth** | NextAuth.js (JWT + Credentials Provider) |
-| **PDF Generation** | jsPDF + html2canvas-pro · Shared React InvoiceTemplate |
-| **WhatsApp** | @whiskeysockets/baileys (Daemon architecture) |
+| **PDF Generation** | jsPDF + html2canvas-pro |
+| **WhatsApp Engine** | @whiskeysockets/baileys (Standalone Express.js Microservice) |
 | **Export** | ExcelJS (CSV / XLSX) |
 | **Validation** | Zod |
 | **Scanning** | html5-qrcode (Camera barcode reader) |
@@ -425,6 +428,14 @@ Open [http://localhost:3000](http://localhost:3000) and log in:
 
 ## 📋 Changelog
 
+### v0.6.0 — Cloud Deployment & Microservice Architecture
+
+- **Database Migration** — migrated from local SQLite to Neon PostgreSQL for cloud persistence
+- **Vercel Deployment** — deployed the Next.js frontend and API routes to Vercel
+- **WhatsApp Microservice** — extracted the Baileys daemon into a standalone Express.js microservice hosted on Railway to bypass Vercel serverless timeout limits
+- **Base64 PDF Pipeline** — re-engineered invoice delivery to transmit dynamically generated PDFs as Base64 strings from Vercel to Railway, bypassing read-only serverless filesystems
+- **Caption Integration** — bundled WhatsApp PDF documents and text messages into a single, cohesive message bubble
+
 ### v0.5.0 — Invoice Unification & Stability
 
 - **Unified Invoice Template** — extracted `InvoiceTemplate.tsx` as single source of truth for invoice rendering across POS preview, print modal, and WhatsApp PDF
@@ -475,7 +486,6 @@ Open [http://localhost:3000](http://localhost:3000) and log in:
 
 - [ ] Upload real UPI QR code image for invoices
 - [ ] Multi-store support with centralized analytics
-- [ ] Cloud deployment (Vercel + PostgreSQL)
 - [ ] SMS fallback for WhatsApp delivery failures
 - [ ] Bulk payment reminders for overdue accounts
 - [ ] Purchase order management for suppliers
