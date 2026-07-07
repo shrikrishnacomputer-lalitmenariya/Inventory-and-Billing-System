@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { sendEmail } from '@/lib/email';
-import { getWhatsappClient } from '@/lib/whatsapp-daemon';
+
 import { getWhatsappSettings } from '@/lib/whatsapp';
 
 export async function POST(req: Request) {
@@ -43,14 +43,19 @@ export async function POST(req: Request) {
     let sentVia = 'console';
 
     // 1. Try WhatsApp first
-    const socket = await getWhatsappClient();
     const settings = await getWhatsappSettings();
-    if (socket && settings.status === 'connected' && settings.ownerPhone) {
+    if (settings.status === 'connected' && settings.ownerPhone) {
       try {
-        const jid = `91${settings.ownerPhone}@s.whatsapp.net`;
-        await socket.sendMessage(jid, { 
-          text: `*Security Alert: Password Reset Requested*\n\nA password reset was requested for your owner account. Click the link below to reset your password:\n\n${resetUrl}\n\n_If you did not request this, please ignore this message._` 
-        });
+        const text = `*Security Alert: Password Reset Requested*\n\nA password reset was requested for your owner account. Click the link below to reset your password:\n\n${resetUrl}\n\n_If you did not request this, please ignore this message._`;
+        
+        const { isBotConfigured, botSendMessage } = await import("@/lib/whatsapp-client");
+        if (isBotConfigured()) {
+          await botSendMessage(settings.ownerPhone, text);
+        } else {
+          const { sendWhatsappMessage } = await import("@/lib/whatsapp-daemon");
+          await sendWhatsappMessage(settings.ownerPhone, text);
+        }
+        
         sentVia = 'whatsapp';
         console.log("Reset link sent via WhatsApp");
       } catch (waError) {
