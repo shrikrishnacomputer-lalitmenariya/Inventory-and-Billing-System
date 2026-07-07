@@ -63,9 +63,9 @@ export async function GET(req: Request) {
         customerName: b.customer?.name || "Guest",
         customerPhone: b.customer?.phone || "-",
         paymentMode: b.paymentMode.toUpperCase(),
-        subtotal: b.subtotal,
-        discount: b.discount,
-        grandTotal: b.totalAmount,
+        subtotal: Number(Number(b.subtotal).toFixed(2)),
+        discount: Number(Number(b.discount).toFixed(2)),
+        grandTotal: Number(Number(b.totalAmount).toFixed(2)),
         billedBy: b.user.name,
       });
     });
@@ -94,7 +94,7 @@ export async function GET(req: Request) {
         const colKey = worksheet.columns[colNumber - 1].key;
 
         if (colKey === "billNumber") {
-          cell.numFmt = "0";
+          cell.numFmt = "@"; // Text format to preserve things like QS-100 or standard strings
         } else if (colKey === "date") {
           cell.numFmt = "dd/mm/yyyy hh:mm AM/PM"; // Exact date format
         } else if (colKey === "customerPhone") {

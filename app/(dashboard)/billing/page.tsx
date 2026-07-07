@@ -108,7 +108,7 @@ export default function BillingPage() {
     }
     const delayDebounce = setTimeout(async () => {
       try {
-        const products = await getProducts(undefined, searchQuery);
+        const products = await getProducts(undefined, searchQuery, "Accessories");
         setSearchResults(products.filter((p: any) => p.quantityInStock > 0));
       } catch (err) {
         console.error(err);
@@ -233,14 +233,17 @@ export default function BillingPage() {
     );
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.product.sellingPrice * item.quantity, 0);
+  const grossTotal = cart.reduce((sum, item) => sum + item.product.sellingPrice * item.quantity, 0);
   const discountVal = parseFloat(discount || "0");
-  const taxableAmount = subtotal - discountVal;
+  const grossAfterDiscount = grossTotal - discountVal;
+
+  const totalGstPercent = parseFloat(sgstPercent || "0") + parseFloat(cgstPercent || "0");
+  const taxableAmount = grossAfterDiscount / (1 + totalGstPercent / 100);
 
   const sgstAmt = taxableAmount * (parseFloat(sgstPercent || "0") / 100);
   const cgstAmt = taxableAmount * (parseFloat(cgstPercent || "0") / 100);
 
-  const totalAmount = taxableAmount + sgstAmt + cgstAmt;
+  const totalAmount = grossAfterDiscount;
 
   const handleCheckout = async () => {
     if (cart.length === 0) {
@@ -374,7 +377,8 @@ export default function BillingPage() {
           customerName={customerName}
           customerPhone={phone}
           cartItems={cart}
-          subtotal={subtotal}
+          subtotal={taxableAmount}
+          grossTotal={grossTotal}
           discount={parseFloat(discount || "0")}
           totalAmount={totalAmount}
           sgstPercent={sgstPercent}
@@ -387,7 +391,7 @@ export default function BillingPage() {
 
       {/* RIGHT: Input form & Terminal */}
       <div className="xl:col-span-3 bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col h-full overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2 flex items-center justify-between">
+        <h2 className="text-xl font-bold mb-4 text-black border-b pb-2 flex items-center justify-between">
           <span>POS Billing Terminal</span>
           <span className="text-xs text-red-500 font-normal">* Required fields</span>
         </h2>
@@ -653,10 +657,10 @@ export default function BillingPage() {
             <input
               type="number"
               min="0"
-              max={subtotal}
+              max={grossTotal}
               placeholder="0"
               className={`mt-1 block w-full border-2 rounded-lg py-2 px-3 text-sm font-semibold focus:outline-none focus:ring-2 transition ${
-                parseFloat(discount || "0") > subtotal 
+                parseFloat(discount || "0") > grossTotal 
                   ? "border-red-400 focus:border-red-500 focus:ring-red-100 bg-red-50/20" 
                   : "border-gray-300 focus:border-blue-600 focus:ring-blue-100"
               }`}
@@ -665,8 +669,8 @@ export default function BillingPage() {
               onKeyDown={(e) => handleNumberKeyDown(e, true)}
               onWheel={(e) => (e.target as HTMLInputElement).blur()}
             />
-            {parseFloat(discount || "0") > subtotal && (
-              <span className="text-[10px] text-red-500 font-bold mt-1 block">Discount cannot exceed subtotal (₹{subtotal})</span>
+            {parseFloat(discount || "0") > grossTotal && (
+              <span className="text-[10px] text-red-500 font-bold mt-1 block">Discount cannot exceed subtotal (₹{grossTotal})</span>
             )}
           </div>
         </div>
@@ -725,7 +729,7 @@ export default function BillingPage() {
         <div className="border-t pt-4 mt-4">
           <button
             onClick={handleCheckout}
-            disabled={isSaving || cart.length === 0 || (phone.trim().length > 0 && customerName.trim() === "") || parseFloat(sgstPercent) > 100 || parseFloat(cgstPercent) > 100 || parseFloat(discount || "0") > subtotal}
+            disabled={isSaving || cart.length === 0 || (phone.trim().length > 0 && customerName.trim() === "") || parseFloat(sgstPercent) > 100 || parseFloat(cgstPercent) > 100 || parseFloat(discount || "0") > grossTotal}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3.5 rounded-lg shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed text-sm uppercase tracking-wider"
           >
             {isSaving ? "Creating Invoice..." : "Generate & Print Invoice"}
@@ -763,6 +767,7 @@ export default function BillingPage() {
                   customerPhone={createdBill.customer?.phone || phone}
                   cartItems={createdBill.billItems}
                   subtotal={parseFloat(createdBill.subtotal)}
+                  grossTotal={parseFloat(createdBill.totalAmount)}
                   discount={parseFloat(createdBill.discount)}
                   totalAmount={parseFloat(createdBill.totalAmount)}
                   sgstPercent={createdBill.sgstPercent?.toString()}

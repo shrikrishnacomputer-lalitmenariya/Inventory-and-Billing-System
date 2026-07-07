@@ -76,7 +76,7 @@ export default function AnalyticsDashboard() {
       {/* Top Bar */}
       <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-sm">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Business Analytics</h2>
+          <h2 className="text-2xl font-bold text-black">Business Analytics</h2>
           <p className="text-sm text-gray-500">Sales and profit metrics dashboard</p>
         </div>
         
@@ -215,6 +215,9 @@ export default function AnalyticsDashboard() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+            <div className="mt-2 text-xs text-gray-400 text-left italic">
+              * Note: Shows Gross Product Volume. Taxes are included and bill discounts are not subtracted.
             </div>
           </div>
         </div>

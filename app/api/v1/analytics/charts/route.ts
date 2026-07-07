@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 
     for (const bill of bills) {
       const dateStr = new Date(bill.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-      const billRevenue = Number(bill.subtotal) - Number(bill.discount);
+      const billRevenue = Number(bill.subtotal); // subtotal is already the tax-extracted discounted base amount
       
       let billCost = 0;
       for (const item of bill.billItems) {
@@ -92,14 +92,20 @@ export async function GET(req: Request) {
       }
     }
 
-    const salesTrend = Object.values(trendMap);
+    const salesTrend = Object.values(trendMap).map(t => ({
+      ...t,
+      sales: Number(t.sales.toFixed(2)),
+      profit: Number(t.profit.toFixed(2))
+    }));
+    
     const categoryData = Object.entries(categoryMap).map(([name, value]) => ({
       name,
-      value,
+      value: Number(value.toFixed(2)),
     }));
+    
     const paymentData = Object.entries(paymentMap).map(([name, value]) => ({
       name: name.toUpperCase(),
-      value,
+      value: Number(value.toFixed(2)),
     }));
 
     return NextResponse.json({

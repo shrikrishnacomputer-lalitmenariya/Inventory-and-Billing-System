@@ -94,7 +94,7 @@ export default function FinancePage() {
     <div className="p-6 h-full flex flex-col bg-gray-50">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-3xl font-black text-black tracking-tight flex items-center gap-2">
             <FaWallet className="text-blue-600" /> Financed Bills
           </h1>
           <p className="text-sm text-gray-500 mt-1 font-medium">Track customers who purchased via Finance.</p>

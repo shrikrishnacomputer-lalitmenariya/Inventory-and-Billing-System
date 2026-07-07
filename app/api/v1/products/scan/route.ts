@@ -21,7 +21,11 @@ export async function GET(req: Request) {
     const productByBarcode = await prisma.product.findUnique({
       where: { barcode: code },
       include: {
-        category: true,
+        category: {
+          include: {
+            parentCategory: true
+          }
+        },
         units: {
           where: { status: "in_stock" }
         }
@@ -31,6 +35,12 @@ export async function GET(req: Request) {
     if (productByBarcode) {
       if (!productByBarcode.isActive) {
         return NextResponse.json({ error: "Product is inactive" }, { status: 400 });
+      }
+      const isAccessory = 
+        productByBarcode.category?.name?.toLowerCase() === "accessories" || 
+        productByBarcode.category?.parentCategory?.name?.toLowerCase() === "accessories";
+      if (isAccessory) {
+        return NextResponse.json({ error: "Accessory items cannot be added to POS bills. Please sell them via Quick Sell on the Inventory page." }, { status: 400 });
       }
       return NextResponse.json({
         type: "product",
@@ -44,7 +54,11 @@ export async function GET(req: Request) {
       include: {
         product: {
           include: {
-            category: true,
+            category: {
+              include: {
+                parentCategory: true
+              }
+            },
             units: {
               where: { status: "in_stock" }
             }
@@ -59,6 +73,12 @@ export async function GET(req: Request) {
       }
       if (!productUnit.product.isActive) {
         return NextResponse.json({ error: "Product is inactive" }, { status: 400 });
+      }
+      const isAccessory = 
+        productUnit.product.category?.name?.toLowerCase() === "accessories" || 
+        productUnit.product.category?.parentCategory?.name?.toLowerCase() === "accessories";
+      if (isAccessory) {
+        return NextResponse.json({ error: "Accessory items cannot be added to POS bills. Please sell them via Quick Sell on the Inventory page." }, { status: 400 });
       }
       return NextResponse.json({
         type: "imei",

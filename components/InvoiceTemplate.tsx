@@ -56,6 +56,7 @@ export interface InvoiceTemplateProps {
   customerPhone: string;
   cartItems: any[];
   subtotal: number;
+  grossTotal?: number;
   discount: number;
   totalAmount: number;
   sgstPercent: string;
@@ -73,6 +74,7 @@ export default function InvoiceTemplate({
   customerPhone,
   cartItems,
   subtotal,
+  grossTotal,
   discount,
   totalAmount,
   sgstPercent,
@@ -81,7 +83,7 @@ export default function InvoiceTemplate({
   dueAmount,
   paymentMode,
 }: InvoiceTemplateProps) {
-  const taxableAmt = subtotal - discount;
+  const taxableAmt = subtotal; // subtotal is now the base taxable amount
   const sAmt = taxableAmt * (parseFloat(sgstPercent || "0") / 100);
   const cAmt = taxableAmt * (parseFloat(cgstPercent || "0") / 100);
 
@@ -128,7 +130,7 @@ export default function InvoiceTemplate({
   </div>
 
   <div className="flex-1 text-center text-white text-xs font-bold tracking-wide">
-    MOBILE | COMPUTER | AC | CCTV | LED TV | REFRIGERATOR | WASHING MACHINE
+    MOBILE | COMPUTER | LAPTOP | PRINTER | AC | CCTV | LED TV | REFRIGERATOR | WASHING MACHINE
   </div>
 
 </div>
@@ -190,6 +192,11 @@ export default function InvoiceTemplate({
             const pRate = item.product ? item.product.sellingPrice : parseFloat(item.unitPrice || "0");
             const pQty = item.quantity;
             const pTotal = item.product ? (item.product.sellingPrice * item.quantity) : parseFloat(item.lineTotal || "0");
+            
+            // Reverse calculate base amount from gross total
+            const totalGstPercent = parseFloat(sgstPercent || "0") + parseFloat(cgstPercent || "0");
+            const baseTotal = pTotal / (1 + totalGstPercent / 100);
+
             const imei = item.productUnit?.imeiNumber || ((item.product?.productType === "serialized" || item.product?.productType === "electronics") && item.product.units?.find((u: any) => u.id.toString() === item.selectedUnitId)?.imeiNumber);
 
             return (
@@ -205,7 +212,7 @@ export default function InvoiceTemplate({
                 </td>
                 <td className="border-r border-[#1b3f8b] p-1.5 text-center font-bold">{pQty}</td>
                 <td className="border-r border-[#1b3f8b] p-1.5 text-right font-bold">₹{pRate}</td>
-                <td className="p-1.5 text-right font-bold">₹{pTotal}</td>
+                <td className="p-1.5 text-right font-bold">₹{baseTotal.toFixed(2)}</td>
               </tr>
             );
           })}
@@ -255,7 +262,7 @@ export default function InvoiceTemplate({
             <div className="border border-[#1b3f8b] text-[10px]">
               <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
                 <span className="font-bold text-[#1b3f8b]">Subtotal</span>
-                <span className="font-bold">₹{subtotal}</span>
+                <span className="font-bold">₹{subtotal.toFixed(2)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between p-1 border-b border-[#1b3f8b] text-red-600 bg-red-50/50">
@@ -263,10 +270,6 @@ export default function InvoiceTemplate({
                   <span className="font-bold">- ₹{discount}</span>
                 </div>
               )}
-              <div className="flex justify-between p-1 border-b border-[#1b3f8b] bg-gray-50/50">
-                <span className="font-bold text-[#1b3f8b]">Taxable Amount</span>
-                <span className="font-bold">₹{taxableAmt.toFixed(2)}</span>
-              </div>
               <div className="flex justify-between p-1 border-b border-[#1b3f8b]">
                 <span className="font-bold text-[#1b3f8b]">CGST ({cgstPercent}%)</span>
                 <span>₹{cAmt.toFixed(2)}</span>

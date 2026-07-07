@@ -179,7 +179,7 @@ export default function StaffManagementPage() {
       {/* Header card */}
       <div className="bg-white p-6 rounded-lg shadow-sm flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Staff & Account Management</h2>
+          <h2 className="text-2xl font-bold text-black">Staff & Account Management</h2>
           <p className="text-sm text-gray-500">Manage user credentials, roles, and status levels</p>
         </div>
         <button

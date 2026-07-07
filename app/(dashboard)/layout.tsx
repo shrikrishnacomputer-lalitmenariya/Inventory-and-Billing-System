@@ -24,7 +24,7 @@ export default async function DashboardLayout({
         {/* Sidebar */}
         <aside className="w-64 bg-white shadow-md flex-shrink-0 hidden md:flex flex-col">
           <div className="h-20 flex flex-col justify-center px-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-800 leading-tight">Shree Krishna Computer</h1>
+            <h1 className="text-xl font-bold text-black leading-tight">Shree Krishna Computer</h1>
             <p className="text-xs text-gray-500 font-semibold mt-0.5">Owner: Lalit Menariya</p>
           </div>
           <nav className="flex-1 px-4 py-6 space-y-2">
@@ -86,7 +86,7 @@ export default async function DashboardLayout({
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6">
-            <div className="md:hidden text-lg font-bold">Shree Krishna Computer</div>
+            <div className="md:hidden text-lg font-bold text-black">Shree Krishna Computer</div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600 font-medium">
                 {session.user.role === "owner" ? "Welcome Lalit Menariya" : `Welcome ${session.user.name}`}

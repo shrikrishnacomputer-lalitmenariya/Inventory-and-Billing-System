@@ -14,10 +14,11 @@ export async function createCategory(data: { name: string; parentCategoryId?: nu
   return res.json();
 }
 
-export async function getProducts(categoryId?: number, search?: string) {
+export async function getProducts(categoryId?: number, search?: string, excludeCategoryName?: string) {
   const params = new URLSearchParams();
   if (categoryId) params.append("categoryId", categoryId.toString());
   if (search) params.append("search", search);
+  if (excludeCategoryName) params.append("excludeCategoryName", excludeCategoryName);
 
   const url = `/api/v1/products${params.toString() ? `?${params.toString()}` : ""}`;
   const res = await fetch(url);
@@ -71,6 +72,19 @@ export async function deleteProduct(productId: number) {
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error || "Failed to delete product");
+  }
+  return res.json();
+}
+
+export async function quickSell(productId: number, quantity: number) {
+  const res = await fetch(`/api/v1/products/quick-sell`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productId, quantity }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to quick sell item");
   }
   return res.json();
 }

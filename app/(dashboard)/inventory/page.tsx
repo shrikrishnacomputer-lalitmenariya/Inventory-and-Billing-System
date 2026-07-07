@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getProducts, getCategories, updateProduct, deleteProduct, createCategory } from "@/lib/api/inventory";
+import { getProducts, getCategories, updateProduct, deleteProduct, createCategory, quickSell } from "@/lib/api/inventory";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import CategorySelector from "@/components/CategorySelector";
@@ -18,6 +18,8 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [showStockScanner, setShowStockScanner] = useState(false);
+  const [quickSellData, setQuickSellData] = useState<Record<number, string>>({});
+  const [quickSellingId, setQuickSellingId] = useState<number | null>(null);
 
   // Edit modal states
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
@@ -213,10 +215,55 @@ export default function InventoryPage() {
     }
   };
 
+  const handleQuickSell = async (product: any) => {
+    const qtyStr = quickSellData[product.id];
+    if (!qtyStr) return;
+    
+    const qty = parseInt(qtyStr);
+    if (isNaN(qty) || qty <= 0) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+    
+    if (qty > product.quantityInStock) {
+      alert(`Cannot sell ${qty}. Only ${product.quantityInStock} in stock.`);
+      return;
+    }
+
+    setQuickSellingId(product.id);
+    try {
+      await quickSell(product.id, qty);
+      // Clear input
+      setQuickSellData(prev => ({ ...prev, [product.id]: "" }));
+      // Reload data to reflect new stock
+      await loadData();
+      alert(`Item sold successfully! Remaining stock: ${product.quantityInStock - qty}`);
+    } catch (err: any) {
+      alert(err.message || "Failed to process quick sell.");
+    } finally {
+      setQuickSellingId(null);
+    }
+  };
+
+  const isAccessoriesSelected = (() => {
+    if (!selectedCategory) return false;
+    const cat = categories.find((c) => c.id === selectedCategory);
+    if (!cat) return false;
+    
+    if (cat.name.toLowerCase() === "accessories") return true;
+    
+    if (cat.parentCategoryId) {
+      const parent = categories.find((c) => c.id === cat.parentCategoryId);
+      if (parent && parent.name.toLowerCase() === "accessories") return true;
+    }
+    
+    return false;
+  })();
+
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Inventory</h2>
+        <h2 className="text-2xl font-bold text-black">Inventory</h2>
         {role === "owner" && (
           <div className="flex gap-3">
             <button
@@ -307,16 +354,47 @@ export default function InventoryPage() {
                     ₹{product.sellingPrice}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      product.quantityInStock <= product.lowStockThreshold 
-                        ? "bg-red-100 text-red-800" 
-                        : "bg-green-100 text-green-800"
-                    }`}>
-                      {product.quantityInStock}
-                    </span>
+                    <div className="flex flex-col gap-2">
+                      <span className={`px-2 inline-flex w-fit text-xs leading-5 font-semibold rounded-full ${
+                        product.quantityInStock <= product.lowStockThreshold 
+                          ? "bg-red-100 text-red-800" 
+                          : "bg-green-100 text-green-800"
+                      }`}>
+                        {product.quantityInStock}
+                      </span>
+                    </div>
                   </td>
                   {role === "owner" && (
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      {isAccessoriesSelected && (product.category?.name?.toLowerCase() === "accessories" || product.category?.parentCategory?.name?.toLowerCase() === "accessories") && (
+                        <div className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg p-1 transition-all duration-200 shadow-sm mr-3">
+                          <input
+                            type="number"
+                            min="1"
+                            max={product.quantityInStock}
+                            placeholder="Qty"
+                            className="w-14 bg-white border border-slate-200 rounded-md px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-center transition-all"
+                            value={quickSellData[product.id] || ""}
+                            onChange={(e) => setQuickSellData(prev => ({ ...prev, [product.id]: e.target.value }))}
+                            onKeyDown={(e) => {
+                               if (e.key === "Enter") handleQuickSell(product);
+                            }}
+                            disabled={quickSellingId === product.id}
+                          />
+                          <button
+                            onClick={() => handleQuickSell(product)}
+                            disabled={quickSellingId === product.id || !quickSellData[product.id]}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-3 py-1 rounded-md text-xs transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-sm shadow-blue-500/10 cursor-pointer"
+                            title="Quick Sell (Press Enter)"
+                          >
+                            {quickSellingId === product.id ? (
+                              <FaSpinner className="animate-spin w-3 h-3" />
+                            ) : (
+                              "Sell"
+                            )}
+                          </button>
+                        </div>
+                      )}
                       <Link
                         href={`/inventory/${product.id}/stock`}
                         className="inline-block text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors text-xs font-bold"

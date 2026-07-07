@@ -214,7 +214,7 @@ export default function NewProductPage() {
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow">
-      <h2 className="text-2xl font-bold mb-6 font-sans text-gray-800 border-b pb-3">Add New Product</h2>
+      <h2 className="text-2xl font-bold mb-6 font-sans text-black border-b pb-3">Add New Product</h2>
       
       {error && <div className="mb-4 text-red-600 bg-red-50 p-3 rounded border border-red-100 font-semibold">{error}</div>}
 

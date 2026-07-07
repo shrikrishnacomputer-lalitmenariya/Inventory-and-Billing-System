@@ -142,7 +142,7 @@ export default function BillingHistoryPage() {
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Billing History</h2>
+        <h2 className="text-2xl font-bold text-black">Billing History</h2>
         <Link
           href="/billing"
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-semibold"

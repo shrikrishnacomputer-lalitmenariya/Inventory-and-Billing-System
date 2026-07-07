@@ -135,7 +135,7 @@ export default function DuePaymentsPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Due Payments</h1>
+        <h1 className="text-2xl font-bold text-black">Due Payments</h1>
         <div className="flex gap-4">
           <input
             type="text"

@@ -230,7 +230,7 @@ export default function DashboardPage() {
       {/* Welcome & Quick Info */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 tracking-tight">Shree Krishna Computer</h2>
+          <h2 className="text-2xl font-bold text-black tracking-tight">Shree Krishna Computer</h2>
           <p className="text-sm text-gray-500 mt-1">
             Real-time business inventory status and billing sales overview.
           </p>

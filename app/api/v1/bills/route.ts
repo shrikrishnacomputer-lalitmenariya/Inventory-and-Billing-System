@@ -16,6 +16,7 @@ export async function GET(req: Request) {
     const bills = await prisma.bill.findMany({
       where: {
         paymentStatus: "PAID",
+        NOT: { billNumber: { startsWith: "QS-" } },
         OR: [
           { billNumber: { contains: search } },
           { customer: { phone: { contains: search } } },
@@ -111,8 +112,25 @@ export async function POST(req: Request) {
       }
 
       // 2. Generate Sequential Bill Number
-      const count = await tx.bill.count();
-      const nextBillNo = (300 + count + 1).toString();
+      const lastStandardBill = await tx.bill.findFirst({
+        where: {
+          NOT: {
+            billNumber: { startsWith: "QS-" }
+          }
+        },
+        orderBy: { id: 'desc' }
+      });
+      
+      let nextBillNo = "301";
+      if (lastStandardBill) {
+        const lastNo = parseInt(lastStandardBill.billNumber, 10);
+        if (!isNaN(lastNo)) {
+          nextBillNo = (lastNo + 1).toString();
+        } else {
+          const count = await tx.bill.count({ where: { NOT: { billNumber: { startsWith: "QS-" } } } });
+          nextBillNo = (300 + count + 1).toString();
+        }
+      }
 
       // 3. Process Cart Items and calculate totals
       let subtotal = 0;
@@ -198,12 +216,15 @@ export async function POST(req: Request) {
       }
 
       const discountVal = parseFloat(discount) || 0;
-      const taxableAmount = subtotal - discountVal;
+      const grossAfterDiscount = subtotal - discountVal;
 
-      const sgstAmt = taxableAmount * (parseFloat(sgstPercent) / 100);
-      const cgstAmt = taxableAmount * (parseFloat(cgstPercent) / 100);
+      const totalGstPercent = (parseFloat(sgstPercent) || 0) + (parseFloat(cgstPercent) || 0);
+      const taxableAmount = grossAfterDiscount / (1 + totalGstPercent / 100);
 
-      const totalAmount = taxableAmount + sgstAmt + cgstAmt;
+      const sgstAmt = taxableAmount * ((parseFloat(sgstPercent) || 0) / 100);
+      const cgstAmt = taxableAmount * ((parseFloat(cgstPercent) || 0) / 100);
+
+      const totalAmount = grossAfterDiscount;
 
       const actualPaid = paidAmount !== undefined ? parseFloat(paidAmount) : totalAmount;
       const dueAmount = totalAmount - actualPaid;
@@ -214,7 +235,7 @@ export async function POST(req: Request) {
         billNumber: nextBillNo,
         customerId,
         createdByUserId,
-        subtotal,
+        subtotal: taxableAmount,
         discount: discountVal,
         sgstPercent: parseFloat(sgstPercent) || 0,
         cgstPercent: parseFloat(cgstPercent) || 0,

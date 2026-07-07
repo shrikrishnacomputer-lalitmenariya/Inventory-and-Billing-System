@@ -108,7 +108,7 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow">
-      <h2 className="text-2xl font-bold mb-2">Add Stock: {product.name}</h2>
+      <h2 className="text-2xl font-bold mb-2 text-black">Add Stock: {product.name}</h2>
       <div className="text-gray-500 mb-6 text-sm">
         Current Stock: {product.quantityInStock} | Type: {product.productType}
       </div>

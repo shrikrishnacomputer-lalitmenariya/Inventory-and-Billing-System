@@ -37,11 +37,10 @@ export async function GET(req: Request) {
 
     let totalSales = 0;
     let totalCost = 0;
-    let totalDiscount = 0;
 
     for (const bill of bills) {
+      // bill.subtotal in DB is now the tax-extracted base amount (already discounted)
       totalSales += Number(bill.subtotal);
-      totalDiscount += Number(bill.discount);
 
       for (const item of bill.billItems) {
         if (item.productUnit) {
@@ -52,7 +51,7 @@ export async function GET(req: Request) {
       }
     }
 
-    const netSales = totalSales - totalDiscount;
+    const netSales = totalSales;
     const totalProfit = netSales - totalCost;
 
     // Fetch low stock items count
@@ -66,8 +65,8 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({
-      totalSales: netSales,
-      totalProfit,
+      totalSales: netSales.toFixed(2),
+      totalProfit: totalProfit.toFixed(2),
       totalBills: bills.length,
       lowStockCount,
     });

@@ -13,6 +13,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("categoryId");
     const search = searchParams.get("search");
+    const excludeCategoryName = searchParams.get("excludeCategoryName");
 
     const where: any = { isActive: true };
 
@@ -28,18 +29,41 @@ export async function GET(req: Request) {
       };
     }
 
+    if (excludeCategoryName) {
+      // Find the category by name (case-insensitive if possible, we'll just match exact or lowercase)
+      const excludeCat = await prisma.category.findFirst({
+        where: { name: { equals: excludeCategoryName, mode: 'insensitive' } },
+        include: { subCategories: true }
+      });
+      
+      if (excludeCat) {
+        const excludeCatIds = [excludeCat.id, ...excludeCat.subCategories.map(sc => sc.id)];
+        
+        // If we already have a category filter, we must use AND or just merge.
+        // It's safer to just set NOT IN
+        where.categoryId = {
+          ...(where.categoryId || {}),
+          notIn: excludeCatIds
+        };
+      }
+    }
+
     if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { brand: { contains: search } },
-        { barcode: { contains: search } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { brand: { contains: search, mode: 'insensitive' } },
+        { barcode: { contains: search, mode: 'insensitive' } },
       ];
     }
 
     const products = await prisma.product.findMany({
       where,
       include: {
-        category: true,
+        category: {
+          include: {
+            parentCategory: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
