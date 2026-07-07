@@ -62,10 +62,8 @@ export async function attemptWhatsappDelivery(deliveryId: number) {
     status = "failed";
     failureReason = "Invalid Number";
   } else {
-    // Attempt real WhatsApp message delivery via daemon
+    // Attempt real WhatsApp message delivery
     try {
-      const { sendWhatsappMessage } = await import("./whatsapp-daemon");
-      
       let messageText = `Hello ${delivery.customerName}, here is your invoice #${delivery.billNumber} from Shree Krishna Computer.`;
       
       if (delivery.customMessage) {
@@ -74,14 +72,26 @@ export async function attemptWhatsappDelivery(deliveryId: number) {
         messageText += `\n\n*Payment Reminder:* You have a pending due amount of ₹${bill.dueAmount}. Please settle it at your earliest convenience.`;
       }
 
-      await sendWhatsappMessage(
-        delivery.mobileNumber,
-        messageText,
-        delivery.pdfPath,
-        `SKC_Invoice_${delivery.billNumber}.pdf`
-      );
+      // Use Railway bot in production, local daemon in dev
+      const { isBotConfigured, botSendMessage } = await import("./whatsapp-client");
+      if (isBotConfigured()) {
+        await botSendMessage(
+          delivery.mobileNumber,
+          messageText,
+          delivery.pdfPath,
+          `SKC_Invoice_${delivery.billNumber}.pdf`
+        );
+      } else {
+        const { sendWhatsappMessage } = await import("./whatsapp-daemon");
+        await sendWhatsappMessage(
+          delivery.mobileNumber,
+          messageText,
+          delivery.pdfPath,
+          `SKC_Invoice_${delivery.billNumber}.pdf`
+        );
+      }
     } catch (error: any) {
-      console.error("Failed to send WhatsApp message via Baileys:", error);
+      console.error("Failed to send WhatsApp message:", error);
       status = "failed";
       failureReason = error.message || "Failed to send message";
     }

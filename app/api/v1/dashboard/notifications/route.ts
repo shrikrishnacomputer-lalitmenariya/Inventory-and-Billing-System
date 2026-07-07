@@ -52,7 +52,7 @@ export async function GET(req: Request) {
         brand: p.brand,
         quantity: p.quantityInStock,
         threshold: p.lowStockThreshold,
-        category: p.category.name,
+        category: p.category?.name || "Uncategorized",
         severity,
         message,
         createdAt: new Date() // For sorting/rendering

@@ -1,5 +1,5 @@
-import makeWASocket, { 
-  DisconnectReason, 
+import makeWASocket, {
+  DisconnectReason,
   useMultiFileAuthState,
   WASocket
 } from '@whiskeysockets/baileys';
@@ -8,228 +8,278 @@ import path from 'path';
 import fs from 'fs';
 import pino from 'pino';
 
-// Save session info outside of Next.js workspace to prevent HMR dev-server reloads
-const sessionDir = path.join(process.cwd(), '..', 'session_auth_info');
+// Production session directory with fallback strategy
+const getSessionDir = () => {
+  // Check environment variable first
+  if (process.env.WHATSAPP_SESSION_DIR) {
+    return process.env.WHATSAPP_SESSION_DIR;
+  }
 
-// Files essential for maintaining the WhatsApp connection — everything else is history junk
-const ESSENTIAL_SESSION_FILES = ['creds.json'];
-const ESSENTIAL_PREFIXES = ['pre-key-', 'sender-key-', 'session-', 'app-state-sync'];
+  // Vercel production paths
+  if (process.env.VERCEL) {
+    // Vercel environment
+    return '/workspace/whatsapp-sessions';
+  }
 
-declare global {
-  var _whatsappSocket: WASocket | null;
-  var _whatsappConnectionActive: boolean;
-}
+  // Local development fallback
+  return path.join(process.cwd(), 'whatsapp-sessions');
+};
 
-let socketInstance: WASocket | null = global._whatsappSocket || null;
-let connectionActive = global._whatsappConnectionActive || false;
+const sessionDir = getSessionDir();
 
-/**
- * Purge non-essential files from session folder (chat history, device lists, LID mappings, etc.)
- * Keeps only credential and encryption key files needed to maintain the connection.
- */
-function purgeSessionJunk() {
-  if (!fs.existsSync(sessionDir)) return;
+// Production monitoring logger
+const logger = pino({
+  level: process.env.WHATSAPP_LOG_LEVEL || 'info',
+  // Simplified transport configuration for production
+});
 
-  const files = fs.readdirSync(sessionDir);
-  let purgedCount = 0;
+// Production initialization state
+let isInitializing = false;
+let initializationRetries = 0;
+const MAX_RETRIES = parseInt(process.env.WHATSAPP_MAX_RETRIES || '3');
+const TIMEOUT_MS = parseInt(process.env.WHATSAPP_TIMEOUT || '60000');
 
-  for (const file of files) {
-    const isEssential =
-      ESSENTIAL_SESSION_FILES.includes(file) ||
-      ESSENTIAL_PREFIXES.some((prefix) => file.startsWith(prefix));
+// Global state
+let globalWhatsappSocket: WASocket | null = null;
+let globalConnectionActive = false;
 
-    if (!isEssential) {
-      try {
-        fs.unlinkSync(path.join(sessionDir, file));
-        purgedCount++;
-      } catch {
-        // skip locked files
+export async function initWhatsappSocket(force = false) {
+  // Prevent multiple simultaneous initializations
+  if (isInitializing && !force) {
+    console.log('[Production] WhatsApp initialization already in progress...');
+    return globalWhatsappSocket;
+  }
+
+  isInitializing = true;
+
+  try {
+    console.log(`[Production] Initializing WhatsApp daemon (attempt ${initializationRetries + 1}/${MAX_RETRIES})...`);
+
+    // Production environment validation
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[Production] Setting up production WhatsApp configuration...');
+
+      // Ensure session directory exists with proper permissions
+      if (!fs.existsSync(sessionDir)) {
+        console.log(`[Production] Creating WhatsApp session directory: ${sessionDir}`);
+        fs.mkdirSync(sessionDir, { recursive: true, mode: 0o700 });
+      } else {
+        // Check directory is writable
+        const testFile = path.join(sessionDir, '.write-test');
+        try {
+          fs.writeFileSync(testFile, 'test');
+          fs.unlinkSync(testFile);
+          console.log(`[Production] Session directory is writable: ${sessionDir}`);
+        } catch (writeError: any) {
+          throw new Error(`Session directory is not writable: ${writeError.message}`);
+        }
       }
     }
-  }
 
-  if (purgedCount > 0) {
-    console.log(`[WhatsApp] 🧹 Purged ${purgedCount} unnecessary session files (history, contacts, etc.)`);
-  }
-}
+    // Check if settings exist, create if not
+    let settings = await prisma.whatsappSettings.findFirst();
+    if (!settings) {
+      console.log('[Production] Creating default WhatsApp settings...');
+      settings = await prisma.whatsappSettings.create({
+        data: {
+          ownerPhone: "9928203203",
+          status: "disconnected",
+          simulateFailures: process.env.WHATSAPP_SIMULATE_FAILURES === 'true' || false,
+          simulateSessionError: process.env.WHATSAPP_SIMULATE_SESSION_ERROR === 'true' || false
+        }
+      });
+    }
 
-export async function getWhatsappClient() {
-  if (global._whatsappSocket && global._whatsappConnectionActive) {
-    return global._whatsappSocket;
-  }
-  return null;
-}
-
-export async function initWhatsappSocket() {
-  if (global._whatsappSocket) {
-    return global._whatsappSocket;
-  }
-
-  // Ensure settings exist
-  let settings = await prisma.whatsappSettings.findFirst();
-  if (!settings) {
-    settings = await prisma.whatsappSettings.create({
-      data: { ownerPhone: "9928203203", status: "disconnected" }
+    // Update settings to connecting state
+    await prisma.whatsappSettings.update({
+      where: { id: settings.id },
+      data: { status: "connecting", qrCode: null }
     });
-  }
 
-  await prisma.whatsappSettings.update({
-    where: { id: settings.id },
-    data: { status: "connecting", qrCode: null }
-  });
+    // Enhanced auth state configuration for production
+    const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
-  const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+    // Enhanced socket configuration for production
+    const sock = makeWASocket({
+      auth: state,
+      printQRInTerminal: false,
+      defaultQueryTimeoutMs: TIMEOUT_MS,
+      logger: logger,
+      shouldSyncHistoryMessage: () => false,
+      fireInitQueries: true,
+      markOnlineOnConnect: false,
+    });
 
-  const sock = makeWASocket({
-    auth: state,
-    printQRInTerminal: false,
-    defaultQueryTimeoutMs: undefined,
-    logger: pino({ level: 'silent' }),
-    // Don't download or sync chat history — we only send invoices
-    shouldSyncHistoryMessage: () => false,
-    fireInitQueries: false,
-    markOnlineOnConnect: false,
-  });
+    // Save to global
+    globalWhatsappSocket = sock;
+    globalConnectionActive = false;
 
-  socketInstance = sock;
-  global._whatsappSocket = sock;
+    // Enhanced event handling for production
+    sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect, qr } = update;
 
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect, qr } = update;
+      console.log(`[Production] WhatsApp connection update: ${connection}`);
 
-    if (qr) {
-      console.log('[WhatsApp] 📱 New QR code ready — scan it from your phone.');
-      await prisma.whatsappSettings.update({
-        where: { id: settings.id },
-        data: { status: "connecting", qrCode: qr }
-      });
-    }
+      if (qr) {
+        console.log('📱 [Production] New QR code generated!');
 
-    if (connection === 'open') {
-      connectionActive = true;
-      global._whatsappConnectionActive = true;
-      console.log('[WhatsApp] ✅ Connected successfully.');
-      await prisma.whatsappSettings.update({
-        where: { id: settings.id },
-        data: { status: "connected", qrCode: null }
-      });
+        // Save QR to file for debugging
+        const qrFile = path.join(sessionDir, `qr-${Date.now()}.txt`);
+        fs.writeFileSync(qrFile, qr);
+        console.log(`💾 [Production] QR code saved to: ${qrFile}`);
 
-      // Clean up any history junk that got written during handshake
-      setTimeout(purgeSessionJunk, 3000);
-    }
-
-    if (connection === 'close') {
-      connectionActive = false;
-      const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-
-      console.log(`[WhatsApp] ❌ Disconnected (code ${statusCode}). ${shouldReconnect ? 'Reconnecting in 5s...' : 'Logged out — session cleared.'}`);
-
-      if (!shouldReconnect) {
-        socketInstance = null;
-        global._whatsappSocket = null;
         await prisma.whatsappSettings.update({
           where: { id: settings.id },
-          data: { status: "disconnected", qrCode: null }
+          data: { status: "connecting", qrCode: qr }
         });
-        // Full wipe on logout
-        try {
-          fs.rmSync(sessionDir, { recursive: true, force: true });
-          console.log('[WhatsApp] 🗑️ Session folder cleared.');
-        } catch {
-          // silently ignore
-        }
-      } else {
-        // Purge junk before reconnecting
-        purgeSessionJunk();
-        connectionActive = false;
-        global._whatsappConnectionActive = false;
-        socketInstance = null;
-        global._whatsappSocket = null;
-        setTimeout(initWhatsappSocket, 5000);
       }
-    }
-  });
 
-  return sock;
+      if (connection === 'open') {
+        console.log('✅ [Production] WhatsApp connected successfully!');
+        globalConnectionActive = true;
+
+        await prisma.whatsappSettings.update({
+          where: { id: settings.id },
+          data: { status: "connected", qrCode: null }
+        });
+      }
+
+      if (connection === 'close') {
+        globalConnectionActive = false;
+        const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+        console.log(`[Production] WhatsApp disconnected (code: ${statusCode}). ${shouldReconnect ? 'Reconnecting...' : 'Session ended.'}`);
+
+        if (!shouldReconnect) {
+          globalWhatsappSocket = null;
+        } else {
+          // Auto-reconnect with exponential backoff for production
+          const backoffDelay = Math.min(5000 * Math.pow(2, initializationRetries), 300000);
+          console.log(`[Production] Reconnecting in ${backoffDelay / 1000} seconds...`);
+
+          setTimeout(() => {
+            initializationRetries++;
+            initWhatsappSocket(true).catch(err => {
+              console.error('[Production] Reconnection failed:', err);
+            });
+          }, backoffDelay);
+        }
+      }
+    });
+
+    isInitializing = false;
+    initializationRetries = 0;
+
+    console.log('✅ [Production] WhatsApp daemon initialized successfully!');
+    return sock;
+
+  } catch (error: any) {
+    isInitializing = false;
+    initializationRetries++;
+
+    console.error(`❌ [Production] WhatsApp initialization attempt ${initializationRetries} failed:`, error);
+
+    if (initializationRetries >= MAX_RETRIES) {
+      throw new Error(`Failed to initialize WhatsApp after ${MAX_RETRIES} attempts: ${error}`);
+    }
+
+    const backoffDelay = Math.min(2000 * Math.pow(2, initializationRetries - 1), 30000);
+    console.log(`[Production] Retrying in ${backoffDelay / 1000} seconds...`);
+
+    setTimeout(() => {
+      initWhatsappSocket().catch(err => {
+        console.error('[Production] WhatsApp initialization failed permanently:', err);
+      });
+    }, backoffDelay);
+
+    throw error;
+  }
+}
+
+// Production logging function
+async function logProductionEvent(eventType: string, eventData: any) {
+  try {
+    await prisma.whatsappAuditLog.create({
+      data: {
+        billId: 0,
+        billNumber: 'SYSTEM',
+        event: eventType,
+        details: JSON.stringify({
+          ...eventData,
+          environment: process.env.NODE_ENV || 'production',
+          sessionDir,
+          timestamp: new Date().toISOString(),
+          nodeEnv: process.env.NODE_ENV
+        })
+      }
+    });
+  } catch (logError: any) {
+    console.error('[Production] Failed to log event:', logError);
+  }
 }
 
 export async function disconnectWhatsapp() {
-  const settings = await prisma.whatsappSettings.findFirst();
-  if (global._whatsappSocket) {
+  if (globalWhatsappSocket) {
     try {
-      await global._whatsappSocket.logout();
-    } catch {
-      // ignore logout errors
+      await globalWhatsappSocket.logout();
+    } catch (e) {
+      console.error('Error during logout:', e);
     }
-    socketInstance = null;
-    global._whatsappSocket = null;
+    globalWhatsappSocket = null;
+    globalConnectionActive = false;
   }
-  connectionActive = false;
-  global._whatsappConnectionActive = false;
-  
+
+  const settings = await prisma.whatsappSettings.findFirst();
   if (settings) {
     await prisma.whatsappSettings.update({
       where: { id: settings.id },
-      data: { status: "disconnected", qrCode: null }
+      data: { status: 'disconnected', qrCode: null }
     });
   }
 
-  // Full wipe on manual disconnect
-  try {
+  if (fs.existsSync(sessionDir)) {
     fs.rmSync(sessionDir, { recursive: true, force: true });
-    console.log('[WhatsApp] 🗑️ Session folder cleared on disconnect.');
-  } catch {
-    // silently ignore
+    fs.mkdirSync(sessionDir, { recursive: true });
   }
 }
 
-export async function sendWhatsappMessage(
-  to: string, 
-  text: string, 
-  pdfPath?: string, 
-  fileName?: string
-) {
-  // Format mobile number to JID: e.g. 919928203203@s.whatsapp.net
-  let formattedNumber = to.replace(/[^0-9]/g, "");
-  if (!formattedNumber.startsWith("91") && formattedNumber.length === 10) {
-    formattedNumber = "91" + formattedNumber;
-  }
-  const jid = `${formattedNumber}@s.whatsapp.net`;
-
-  let client = global._whatsappSocket;
-  if (!client || !global._whatsappConnectionActive) {
-    client = await initWhatsappSocket();
+export async function sendWhatsappMessage(phone: string, text: string, pdfPath?: string, pdfFilename?: string) {
+  if (!globalWhatsappSocket) {
+    throw new Error('WhatsApp is not connected');
   }
 
-  // Wait a moment if connecting
-  let attempts = 0;
-  while (!global._whatsappConnectionActive && attempts < 10) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    attempts++;
+  let jid = phone.replace(/[^0-9]/g, '');
+  if (jid.length === 10) {
+    jid = '91' + jid;
   }
+  jid = jid + '@s.whatsapp.net';
 
-  if (!global._whatsappConnectionActive || !client) {
-    throw new Error("WhatsApp device is not paired/connected.");
-  }
+  await globalWhatsappSocket.sendMessage(jid, { text });
 
-  if (pdfPath) {
-    const absolutePath = path.join(process.cwd(), "public", pdfPath);
-    if (!fs.existsSync(absolutePath)) {
-      throw new Error(`PDF file not found at path: ${absolutePath}`);
+  if (pdfPath && pdfFilename) {
+    let pdfBuffer: Buffer | null = null;
+    if (pdfPath.startsWith('http')) {
+      const response = await fetch(pdfPath);
+      pdfBuffer = Buffer.from(await response.arrayBuffer());
+    } else {
+      const fullPath = path.resolve(process.cwd(), 'public', pdfPath);
+      if (fs.existsSync(fullPath)) {
+        pdfBuffer = fs.readFileSync(fullPath);
+      }
     }
 
-    await client.sendMessage(jid, {
-      document: { url: absolutePath },
-      fileName: fileName || "invoice.pdf",
-      mimetype: "application/pdf",
-      caption: text
-    });
-  } else {
-    await client.sendMessage(jid, { text });
+    if (pdfBuffer) {
+      await globalWhatsappSocket.sendMessage(jid, {
+        document: pdfBuffer,
+        mimetype: 'application/pdf',
+        fileName: pdfFilename,
+      });
+    }
   }
-
-  console.log(`[WhatsApp] 📤 Invoice sent to ${formattedNumber}`);
+  console.log(`✅ Local daemon message sent to ${phone}`);
 }
+
+export { globalWhatsappSocket, globalConnectionActive };

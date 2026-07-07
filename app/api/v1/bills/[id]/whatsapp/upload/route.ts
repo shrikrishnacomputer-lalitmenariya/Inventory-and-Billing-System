@@ -63,10 +63,13 @@ export async function POST(
       `Invoice PDF saved and delivery queued for ${customerName} (${mobileNumber})`
     );
 
-    // Run delivery asynchronously in the background so the UI doesn't hang
-    attemptWhatsappDelivery(delivery.id).catch((err) => {
-      console.error("Background WhatsApp delivery failed:", err);
-    });
+    // In Vercel serverless, we MUST await background tasks or they get killed
+    try {
+      await attemptWhatsappDelivery(delivery.id);
+    } catch (err) {
+      console.error("WhatsApp delivery failed:", err);
+      // We still return success since the PDF uploaded and delivery was queued/failed gracefully
+    }
 
     return NextResponse.json({ success: true, delivery });
   } catch (error: any) {
