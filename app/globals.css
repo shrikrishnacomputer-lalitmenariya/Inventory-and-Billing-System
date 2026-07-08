@@ -27,15 +27,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-h1:not(.glass-card h1),
-h2:not(.glass-card h2),
-h3:not(.glass-card h3),
-h4:not(.glass-card h4),
-h5:not(.glass-card h5),
-h6:not(.glass-card h6) {
-  color: #0f172a;
-}
-
 
 
 /* Force high visibility on all form inputs and controls, EXCEPT inside glass-card */
