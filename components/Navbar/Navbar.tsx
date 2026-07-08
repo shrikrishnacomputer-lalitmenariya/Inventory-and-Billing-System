@@ -91,15 +91,15 @@ export default function Navbar() {
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         scrolled
-          ? "bg-white/80 dark:bg-slate-955/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm"
+          ? "bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 shadow-sm"
           : "bg-transparent border-b border-transparent"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo (Left Aligned) */}
-          <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2 sm:gap-3 group">
-            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-white overflow-hidden shadow-sm border border-slate-200/50 transition-transform group-hover:scale-105 duration-300 shrink-0">
+          <Link href="/" onClick={handleLogoClick} className="flex items-center gap-1.5 min-[350px]:gap-2 sm:gap-3 group">
+            <div className="flex h-9 w-9 min-[350px]:h-10 min-[350px]:w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-white overflow-hidden shadow-sm border border-slate-200/50 transition-transform group-hover:scale-105 duration-300 shrink-0">
               <Image 
                 src="/logo.png" 
                 alt="Shree Krishna Computers Logo" 
@@ -110,10 +110,10 @@ export default function Navbar() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-base min-[390px]:text-lg sm:text-xl font-extrabold text-slate-800 dark:text-white leading-tight whitespace-nowrap">
+              <span className="text-sm min-[350px]:text-base min-[390px]:text-lg sm:text-xl font-extrabold text-slate-800 dark:text-white leading-tight whitespace-nowrap">
                 Shree Krishna Computers
               </span>
-              <span className="text-[9px] sm:text-[10px] text-blue-600 dark:text-blue-400 font-bold tracking-wider uppercase mt-0.5">
+              <span className="text-[8px] min-[350px]:text-[9px] sm:text-[10px] text-blue-600 dark:text-blue-400 font-bold tracking-wider uppercase mt-0.5">
                 Sales & Services
               </span>
             </div>
