@@ -63,7 +63,7 @@ export async function GET(req: Request) {
         customerName: b.customer?.name || "Guest",
         customerPhone: b.customer?.phone || "-",
         paymentMode: b.paymentMode.toUpperCase(),
-        subtotal: Number(Number(b.subtotal).toFixed(2)),
+        subtotal: Number(Number(Number(b.totalAmount) + Number(b.discount)).toFixed(2)),
         discount: Number(Number(b.discount).toFixed(2)),
         grandTotal: Number(Number(b.totalAmount).toFixed(2)),
         billedBy: b.user.name,

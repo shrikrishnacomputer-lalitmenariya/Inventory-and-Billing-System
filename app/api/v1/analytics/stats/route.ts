@@ -39,8 +39,8 @@ export async function GET(req: Request) {
     let totalCost = 0;
 
     for (const bill of bills) {
-      // bill.subtotal in DB is now the tax-extracted base amount (already discounted)
-      totalSales += Number(bill.subtotal);
+      // bill.totalAmount in DB is the final Gross Total (Selling Price after discount)
+      totalSales += Number(bill.totalAmount);
 
       for (const item of bill.billItems) {
         if (item.productUnit) {

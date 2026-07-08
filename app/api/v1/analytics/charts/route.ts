@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 
     for (const bill of bills) {
       const dateStr = new Date(bill.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-      const billRevenue = Number(bill.subtotal); // subtotal is already the tax-extracted discounted base amount
+      const billRevenue = Number(bill.totalAmount); // using final Gross Total (Selling Price after discount)
       
       let billCost = 0;
       for (const item of bill.billItems) {
