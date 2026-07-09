@@ -41,6 +41,7 @@ export async function generateBillPdfBlob(bill: any): Promise<Blob> {
         billNumber: bill.billNumber,
         createdAt: bill.createdAt,
         customerName: bill.customer?.name || bill.customerName || "Guest Customer",
+        customerAddress: bill.customer?.address || undefined,
         customerPhone: bill.customer?.phone || bill.customerPhone || "",
         cartItems: bill.billItems || [],
         subtotal: Number(bill.subtotal),

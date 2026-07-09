@@ -78,6 +78,7 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
       const formData = new FormData();
       formData.append("file", blob, `SKC_Invoice_${bill.billNumber}.pdf`);
       formData.append("customerName", bill.customer?.name || bill.customerName || "Customer");
+      formData.append("customerAddress", bill.customer?.address || "");
       formData.append("mobileNumber", customerPhone);
       formData.append("billNumber", bill.billNumber);
 
@@ -273,6 +274,7 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
             billNumber={bill.billNumber}
             createdAt={bill.createdAt}
             customerName={bill.customer?.name || bill.customerName || "Guest Customer"}
+            customerAddress={bill.customer?.address || undefined}
             customerPhone={bill.customer?.phone || bill.customerPhone || ""}
             cartItems={bill.billItems || []}
             subtotal={Number(bill.subtotal)}

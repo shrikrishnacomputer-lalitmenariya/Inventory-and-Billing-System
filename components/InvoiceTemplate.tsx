@@ -53,6 +53,7 @@ export interface InvoiceTemplateProps {
   billNumber: string;
   createdAt: string | Date;
   customerName: string;
+  customerAddress?: string;
   customerPhone: string;
   cartItems: any[];
   subtotal: number;
@@ -71,6 +72,7 @@ export default function InvoiceTemplate({
   billNumber,
   createdAt,
   customerName,
+  customerAddress,
   customerPhone,
   cartItems,
   subtotal,
@@ -152,8 +154,14 @@ export default function InvoiceTemplate({
               {customerName || "Guest Customer"}
             </span>
           </div>
+          {customerAddress && (
+            <div className="mt-0.5">
+              <span className="font-extrabold text-[#1b3f8b]">Address: </span>
+              <span className="font-bold">{customerAddress}</span>
+            </div>
+          )}
           {customerPhone && (
-            <div className="mt-1">
+            <div className="mt-0.5">
               <span className="font-extrabold text-[#1b3f8b]">Phone: </span>
               <span className="font-bold">{customerPhone}</span>
             </div>

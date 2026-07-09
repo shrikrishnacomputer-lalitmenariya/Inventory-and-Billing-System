@@ -55,6 +55,7 @@ export default function BillingPage() {
   // Customer info
   const [phone, setPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
   const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
 
   // Bill metadata
@@ -199,9 +200,10 @@ export default function BillingPage() {
       setIsSearchingCustomer(true);
       try {
         const cust = await searchCustomer(value);
-        if (cust && cust.name) {
-          // Only auto-fill the name if the user hasn't already typed something
-          setCustomerName((prev) => prev.trim() === "" ? cust.name : prev);
+        if (cust) {
+          // Only auto-fill if the user hasn't already typed something
+          if (cust.name) setCustomerName((prev) => prev.trim() === "" ? cust.name : prev);
+          if (cust.address) setCustomerAddress((prev) => prev.trim() === "" ? cust.address : prev);
         }
       } catch (err) {
         console.error(err);
@@ -290,6 +292,7 @@ export default function BillingPage() {
 
       const billData: any = {
         customerName: customerName.trim(),
+        customerAddress: customerAddress.trim(),
         customerPhone: phone.trim(),
         paymentMode,
         discount: discountVal,
@@ -317,6 +320,9 @@ export default function BillingPage() {
           const formData = new FormData();
           formData.append("file", blob, `SKC_Invoice_${bill.billNumber}.pdf`);
           formData.append("customerName", billData.customerName);
+          if (billData.customerAddress) {
+            formData.append("customerAddress", billData.customerAddress);
+          }
           formData.append("mobileNumber", billData.customerPhone);
           formData.append("billNumber", bill.billNumber);
           
@@ -375,6 +381,7 @@ export default function BillingPage() {
           billNumber="DRAFT"
           createdAt={new Date()}
           customerName={customerName}
+          customerAddress={customerAddress}
           customerPhone={phone}
           cartItems={cart}
           subtotal={taxableAmount}
@@ -566,6 +573,20 @@ export default function BillingPage() {
             {customerName.trim() === "" && (
               <span className="text-[10px] text-red-500 font-bold mt-1 block">Name is required</span>
             )}
+          </div>
+
+          {/* Customer Address (Full Width) */}
+          <div className="col-span-1 md:col-span-2">
+            <label className="block text-sm font-bold text-gray-700">
+              Customer Address
+            </label>
+            <input
+              type="text"
+              placeholder="Enter customer address..."
+              className="mt-1 block w-full border-2 rounded-lg py-2 px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 border-gray-300 focus:border-blue-600 focus:ring-blue-100"
+              value={customerAddress}
+              onChange={(e) => setCustomerAddress(e.target.value)}
+            />
           </div>
 
           {/* Payment Method - Highlighted selection */}
@@ -764,6 +785,7 @@ export default function BillingPage() {
                   billNumber={createdBill.billNumber}
                   createdAt={createdBill.createdAt}
                   customerName={createdBill.customer?.name || customerName || "Guest Customer"}
+                  customerAddress={createdBill.customer?.address || customerAddress || undefined}
                   customerPhone={createdBill.customer?.phone || phone}
                   cartItems={createdBill.billItems}
                   subtotal={parseFloat(createdBill.subtotal)}

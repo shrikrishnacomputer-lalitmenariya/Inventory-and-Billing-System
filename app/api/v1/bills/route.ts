@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     let { 
-      customerName, customerPhone, paymentMode, discount = 0, items,
+      customerName, customerPhone, customerAddress, paymentMode, discount = 0, items,
       sgstPercent = 0, cgstPercent = 0, paidAmount,
       financeProviderId, emiAmount, financeMonths
     } = body;
@@ -99,13 +99,17 @@ export async function POST(req: Request) {
           customer = await tx.customer.create({
             data: {
               name: customerName || null,
+              address: customerAddress || null,
               phone: customerPhone,
             },
           });
-        } else if (customerName && customer.name !== customerName) {
+        } else if ((customerName && customer.name !== customerName) || (customerAddress && customer.address !== customerAddress)) {
           customer = await tx.customer.update({
             where: { id: customer.id },
-            data: { name: customerName },
+            data: { 
+              name: customerName || customer.name,
+              address: customerAddress || customer.address
+            },
           });
         }
         customerId = customer.id;

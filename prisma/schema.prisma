@@ -89,6 +89,7 @@ model StockInRecord {
 model Customer {
   id    Int     @id @default(autoincrement())
   name  String?
+  address String?
   phone String?
   bills Bill[]
 
