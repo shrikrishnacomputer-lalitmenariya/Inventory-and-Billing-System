@@ -25,8 +25,8 @@ export default function NewProductPage() {
     productType: "quantity",
     costPrice: "",
     sellingPrice: "",
-    lowStockThreshold: "5",
-    initialQuantity: "0",
+    lowStockThreshold: "2",
+    initialQuantity: "",
     imeis: "",
     imageUrl: "",
     barcode: "",
@@ -409,6 +409,7 @@ export default function NewProductPage() {
               <input
                 type="number"
                 min="0"
+                placeholder="0"
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 value={formData.initialQuantity}
                 onChange={(e) => setFormData({ ...formData, initialQuantity: e.target.value })}
