@@ -196,6 +196,7 @@ export default function InvoiceTemplate({
         </thead>
         <tbody>
           {cartItems.map((item: any, idx: number) => {
+            const pBrand = item.product ? item.product.brand : item.brand;
             const pName = item.product ? item.product.name : item.name;
             const pRate = item.product ? item.product.sellingPrice : parseFloat(item.unitPrice || "0");
             const pQty = item.quantity;
@@ -211,6 +212,7 @@ export default function InvoiceTemplate({
               <tr key={idx} className="border-b border-[#1b3f8b]">
                 <td className="border-r border-[#1b3f8b] p-1.5 text-left">{idx + 1}</td>
                 <td className="border-r border-[#1b3f8b] p-1.5 text-left">
+                  {pBrand && <div className="font-extrabold text-[#1b3f8b] text-[9px] uppercase tracking-wider mb-0.5">{pBrand}</div>}
                   <div className="font-bold text-gray-800">{pName}</div>
                   {imei && (
                     <div className="text-[8px] text-gray-600 font-semibold mt-0.5">
