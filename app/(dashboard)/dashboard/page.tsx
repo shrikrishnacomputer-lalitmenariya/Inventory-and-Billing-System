@@ -492,6 +492,21 @@ export default function DashboardPage() {
             <span>Cumulative calendar month total</span>
           </p>
         </div>
+
+        {/* Total Stock Worth */}
+        <div className="relative group overflow-hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-amber-100">
+          <div className="absolute top-0 left-0 h-1 w-full bg-amber-500"></div>
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Stock Worth</p>
+              <h3 className="text-3xl font-extrabold text-gray-800 mt-2">₹{stats?.totalStockValue?.toFixed(2) || "0.00"}</h3>
+            </div>
+            <span className="p-2 bg-amber-55 rounded-lg text-amber-600 text-lg">💎</span>
+          </div>
+          <p className="text-xs text-gray-500 mt-4 flex items-center gap-1">
+            <span>Capital tied up in current inventory</span>
+          </p>
+        </div>
       </div>
 
       {/* Main Charts & Notifications Grid */}

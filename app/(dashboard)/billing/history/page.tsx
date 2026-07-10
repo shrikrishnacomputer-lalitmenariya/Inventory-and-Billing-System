@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { getBills, getBill } from "@/lib/api/billing";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
+
 
 function numberToWords(num: number): string {
   const a = [
@@ -55,6 +57,13 @@ export default function BillingHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [sendingWhatsappId, setSendingWhatsappId] = useState<number | null>(null);
 
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editData, setEditData] = useState({ name: "", phone: "", address: "" });
+  const [savingCustomer, setSavingCustomer] = useState(false);
+  const [selectedBill, setSelectedBill] = useState<any>(null);
+
+  const { role } = useAuth();
+
   useEffect(() => {
     loadBills();
   }, [search]);
@@ -80,6 +89,65 @@ export default function BillingHistoryPage() {
       console.error(err);
     } finally {
       if (!silent) setLoading(false);
+    }
+  };
+
+  const openEditModal = (bill: any) => {
+    setSelectedBill(bill);
+    setEditData({
+      name: bill.customer?.name || bill.customerName || "",
+      phone: bill.customer?.phone || bill.customerPhone || "",
+      address: bill.customer?.address || "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBill || !selectedBill.customer) {
+      alert("This is a legacy bill without a linked customer profile. Cannot edit.");
+      return;
+    }
+    
+    // Check what changed
+    const oldName = selectedBill.customer.name || selectedBill.customerName || "";
+    const oldPhone = selectedBill.customer.phone || selectedBill.customerPhone || "";
+    const oldAddress = selectedBill.customer.address || "";
+    
+    let changes = [];
+    if (oldName !== editData.name) changes.push(`Name: ${oldName || "(Empty)"} ➔ ${editData.name || "(Empty)"}`);
+    if (oldPhone !== editData.phone) changes.push(`Phone: ${oldPhone || "(Empty)"} ➔ ${editData.phone || "(Empty)"}`);
+    if (oldAddress !== editData.address) changes.push(`Address: ${oldAddress || "(Empty)"} ➔ ${editData.address || "(Empty)"}`);
+    
+    if (changes.length === 0) {
+      setShowEditModal(false);
+      return;
+    }
+    
+    const confirmMsg = `Confirm Customer Updates:\n\n${changes.join("\n")}\n\nSave changes?`;
+    if (!window.confirm(confirmMsg)) return;
+    
+    setSavingCustomer(true);
+    try {
+      const res = await fetch(`/api/v1/customers/${selectedBill.customer.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editData),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update");
+      }
+      
+      const { customer } = await res.json();
+      
+      // Update local state for bills
+      setBills(bills.map(b => (b.customerId === customer.id ? { ...b, customer } : b)));
+      setShowEditModal(false);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSavingCustomer(false);
     }
   };
 
@@ -227,6 +295,15 @@ export default function BillingHistoryPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    {role === "owner" && bill.status !== "voided" && bill.customer && (
+                      <button
+                        onClick={() => openEditModal(bill)}
+                        title="Edit Customer Details"
+                        className="inline-flex items-center justify-center p-2 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-800 transition-colors"
+                      >
+                        ✏️
+                      </button>
+                    )}
                     <button
                       onClick={() => handleSendWhatsapp(bill)}
                       disabled={sendingWhatsappId === bill.id || bill.status === "voided"}
@@ -273,6 +350,64 @@ export default function BillingHistoryPage() {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+              <h3 className="text-lg font-bold text-gray-800">Edit Customer Details</h3>
+              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+            </div>
+            <form onSubmit={handleSaveCustomer} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700">Customer Name</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={editData.name}
+                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700">Phone Number (10 digits)</label>
+                <input
+                  type="text"
+                  maxLength={10}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={editData.phone}
+                  onChange={(e) => setEditData({ ...editData, phone: e.target.value.replace(/\D/g, "") })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700">Address</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={editData.address}
+                  onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="bg-white border border-gray-300 rounded-md shadow-sm py-2 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCustomer}
+                  className="bg-blue-600 border border-transparent rounded-md shadow-sm py-2 px-4 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {savingCustomer ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

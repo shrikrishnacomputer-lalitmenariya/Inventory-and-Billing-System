@@ -22,9 +22,11 @@ export async function GET(req: Request) {
     let totalStockUnits = 0;
     let lowStockCount = 0;
     let outOfStockCount = 0;
+    let totalStockValue = 0;
 
     for (const p of products) {
       totalStockUnits += p.quantityInStock;
+      totalStockValue += Number(p.costPrice) * p.quantityInStock;
       if (p.quantityInStock === 0) {
         outOfStockCount++;
       } else if (p.quantityInStock <= p.lowStockThreshold) {
@@ -185,6 +187,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       totalProducts,
       totalStockUnits,
+      totalStockValue,
       totalCategories,
       todaySales,
       monthlySales,
