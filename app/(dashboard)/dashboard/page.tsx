@@ -416,14 +416,14 @@ export default function DashboardPage() {
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Total Products */}
         <div className="relative group overflow-hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-blue-100">
           <div className="absolute top-0 left-0 h-1 w-full bg-blue-500"></div>
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Products</p>
-              <h3 className="text-3xl font-extrabold text-gray-800 mt-2">{stats?.totalProducts}</h3>
+              <h3 className="text-2xl xl:text-3xl font-extrabold text-gray-800 mt-2 break-words">{stats?.totalProducts}</h3>
             </div>
             <span className="p-2 bg-blue-55 rounded-lg text-blue-600 text-lg">📦</span>
           </div>
@@ -438,7 +438,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Stock Units</p>
-              <h3 className="text-3xl font-extrabold text-gray-800 mt-2">{stats?.totalStockUnits}</h3>
+              <h3 className="text-2xl xl:text-3xl font-extrabold text-gray-800 mt-2 break-words">{stats?.totalStockUnits}</h3>
             </div>
             <span className="p-2 bg-emerald-55 rounded-lg text-emerald-600 text-lg">📊</span>
           </div>
@@ -453,7 +453,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Categories</p>
-              <h3 className="text-3xl font-extrabold text-gray-800 mt-2">{stats?.totalCategories}</h3>
+              <h3 className="text-2xl xl:text-3xl font-extrabold text-gray-800 mt-2 break-words">{stats?.totalCategories}</h3>
             </div>
             <span className="p-2 bg-purple-55 rounded-lg text-purple-600 text-lg">🏷️</span>
           </div>
@@ -468,7 +468,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Today's Sales</p>
-              <h3 className="text-3xl font-extrabold text-gray-800 mt-2">₹{stats?.todaySales?.toFixed(2)}</h3>
+              <h3 className="text-2xl xl:text-3xl font-extrabold text-gray-800 mt-2 break-words">₹{stats?.todaySales?.toFixed(2)}</h3>
             </div>
             <span className="p-2 bg-indigo-55 rounded-lg text-indigo-600 text-lg">💰</span>
           </div>
@@ -484,7 +484,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Monthly Sales</p>
-              <h3 className="text-3xl font-extrabold text-gray-800 mt-2">₹{stats?.monthlySales?.toFixed(2)}</h3>
+              <h3 className="text-2xl xl:text-3xl font-extrabold text-gray-800 mt-2 break-words">₹{stats?.monthlySales?.toFixed(2)}</h3>
             </div>
             <span className="p-2 bg-cyan-55 rounded-lg text-cyan-600 text-lg">📅</span>
           </div>
@@ -499,7 +499,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Stock Worth</p>
-              <h3 className="text-3xl font-extrabold text-gray-800 mt-2">₹{stats?.totalStockValue?.toFixed(2) || "0.00"}</h3>
+              <h3 className="text-2xl xl:text-3xl font-extrabold text-gray-800 mt-2 break-words">₹{stats?.totalStockValue?.toFixed(2) || "0.00"}</h3>
             </div>
             <span className="p-2 bg-amber-55 rounded-lg text-amber-600 text-lg">💎</span>
           </div>
