@@ -363,7 +363,7 @@ export default function InventoryPage() {
                               className="flex items-center justify-between w-[170px] px-1 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-[11px] font-mono text-slate-700 transition-colors"
                             >
                               <span className="truncate mr-2" title={product.units[product.units.length - 1].imeiNumber}>
-                                IMEI: {product.units[product.units.length - 1].imeiNumber}
+                                {product.productType === "electronics" ? "SN" : "IMEI"}: {product.units[product.units.length - 1].imeiNumber}
                               </span>
                               <span className="text-[9px] text-slate-400 bg-slate-200 px-1 rounded-sm">
                                 {product.units.length}
