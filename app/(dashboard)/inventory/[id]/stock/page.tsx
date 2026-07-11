@@ -20,6 +20,37 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
   const [quantity, setQuantity] = useState("1");
   const [imeiInput, setImeiInput] = useState(""); // text area for pasted IMEIs
   const [costPrice, setCostPrice] = useState("");
+  
+  const [showEditImei, setShowEditImei] = useState(false);
+  const [editingImeis, setEditingImeis] = useState<Record<number, string>>({});
+  const [savingImeiId, setSavingImeiId] = useState<number | null>(null);
+
+  const handleSaveImei = async (unitId: number, oldImei: string) => {
+    const newImei = editingImeis[unitId];
+    if (!newImei || newImei === oldImei) return;
+    
+    if (!window.confirm(`Are you sure you want to change IMEI/SN: ${oldImei} -> ${newImei}?`)) {
+      return;
+    }
+
+    try {
+      setSavingImeiId(unitId);
+      const res = await fetch(`/api/v1/product-units/${unitId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imeiNumber: newImei }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update IMEI");
+      
+      alert(`Success! IMEI/SN changed from ${oldImei} to ${newImei}`);
+      await loadProduct(); 
+    } catch (err: any) {
+      alert(err.message || "Failed to update IMEI");
+    } finally {
+      setSavingImeiId(null);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && role !== "owner") {
@@ -60,6 +91,15 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
       const data = await res.json();
       setProduct(data);
       setCostPrice(data.costPrice);
+      
+      // Initialize editing states for IMEIs
+      if (data.units) {
+        const initialEdits: Record<number, string> = {};
+        data.units.forEach((u: any) => {
+          initialEdits[u.id] = u.imeiNumber;
+        });
+        setEditingImeis(initialEdits);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -158,19 +198,46 @@ export default function AddStockPage({ params }: { params: Promise<{ id: string 
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Unit Cost Price (₹)</label>
-          <input
-            type="number"
-            step="0.01"
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            value={costPrice}
-            onChange={(e) => setCostPrice(e.target.value)}
-            onKeyDown={(e) => handleNumberKeyDown(e, true)}
-            onWheel={(e) => (e.target as HTMLInputElement).blur()}
-          />
-        </div>
+        {(product.productType === "serialized" || product.productType === "electronics") && product.units && product.units.length > 0 && (
+          <div className="pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setShowEditImei(!showEditImei)}
+              className="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-2 transition"
+            >
+              ✏️ {showEditImei ? "Hide Existing IMEIs" : "Edit Existing IMEIs"}
+            </button>
+            
+            {showEditImei && (
+              <div className="mt-4 space-y-2 max-h-60 overflow-y-auto custom-scrollbar p-1">
+                {product.units.map((unit: any) => (
+                  <div key={unit.id} className="flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-200">
+                    <input 
+                      type="text"
+                      className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm font-mono focus:ring-blue-500 focus:border-blue-500"
+                      value={editingImeis[unit.id] || ""}
+                      onChange={(e) => setEditingImeis(prev => ({ ...prev, [unit.id]: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSaveImei(unit.id, unit.imeiNumber);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveImei(unit.id, unit.imeiNumber)}
+                      disabled={savingImeiId === unit.id || editingImeis[unit.id] === unit.imeiNumber}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-bold disabled:opacity-50 transition"
+                    >
+                      {savingImeiId === unit.id ? "..." : "Save"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <button

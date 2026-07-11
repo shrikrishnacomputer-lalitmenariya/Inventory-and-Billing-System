@@ -64,6 +64,11 @@ export async function GET(req: Request) {
             parentCategory: true,
           },
         },
+        units: {
+          where: {
+            status: 'in_stock'
+          }
+        }
       },
       orderBy: {
         createdAt: "desc",

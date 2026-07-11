@@ -20,6 +20,7 @@ export default function InventoryPage() {
   const [showStockScanner, setShowStockScanner] = useState(false);
   const [quickSellData, setQuickSellData] = useState<Record<number, string>>({});
   const [quickSellingId, setQuickSellingId] = useState<number | null>(null);
+  const [expandedImeiId, setExpandedImeiId] = useState<number | null>(null);
 
   // Edit modal states
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
@@ -45,6 +46,22 @@ export default function InventoryPage() {
   useEffect(() => {
     loadData();
   }, [search, selectedCategory]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.imei-dropdown-container')) {
+        setExpandedImeiId(null);
+      }
+    };
+    
+    if (expandedImeiId !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [expandedImeiId]);
 
   const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, allowDecimal = false) => {
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -339,6 +356,30 @@ export default function InventoryPage() {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{product.name}</div>
                         {product.brand && <div className="text-sm text-gray-500">{product.brand}</div>}
+                        {(product.productType === 'serialized' || product.productType === 'electronics') && product.units && product.units.length > 0 && (
+                          <div className="mt-1.5 relative imei-dropdown-container">
+                            <button 
+                              onClick={() => setExpandedImeiId(expandedImeiId === product.id ? null : product.id)}
+                              className="flex items-center justify-between w-[170px] px-1 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded text-[11px] font-mono text-slate-700 transition-colors"
+                            >
+                              <span className="truncate mr-2" title={product.units[product.units.length - 1].imeiNumber}>
+                                IMEI: {product.units[product.units.length - 1].imeiNumber}
+                              </span>
+                              <span className="text-[9px] text-slate-400 bg-slate-200 px-1 rounded-sm">
+                                {product.units.length}
+                              </span>
+                            </button>
+                            {expandedImeiId === product.id && (
+                              <div className="mt-1 w-[160px] max-h-32 overflow-y-auto border border-slate-200 rounded bg-white shadow-sm absolute z-10">
+                                {product.units.map((unit: any) => (
+                                  <div key={unit.id} className="px-2 py-1 text-[11px] font-mono text-slate-600 border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                    {unit.imeiNumber}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>

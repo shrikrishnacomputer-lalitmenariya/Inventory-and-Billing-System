@@ -285,6 +285,10 @@ export async function POST(req: Request) {
       });
 
       return bill;
+    },
+    {
+      maxWait: 5000,
+      timeout: 15000,
     });
 
     return NextResponse.json(result, { status: 201 });
