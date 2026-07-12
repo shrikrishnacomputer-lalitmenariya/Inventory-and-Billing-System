@@ -142,10 +142,21 @@ export default function BillingPage() {
       const res = await fetch(`/api/v1/products/${product.id}`);
       const fullProduct = await res.json();
       
+      let smartUnitId = "";
+      if (fullProduct.units && fullProduct.units.length > 0) {
+        const alreadySelectedIds = cart
+          .filter((item) => item.product.id === fullProduct.id)
+          .map((item) => item.selectedUnitId);
+        
+        const availableUnit = fullProduct.units.find((u: any) => !alreadySelectedIds.includes(u.id.toString()));
+        smartUnitId = availableUnit ? availableUnit.id.toString() : fullProduct.units[0].id.toString();
+      }
+
       const newItem = {
+        cartItemId: Math.random().toString(36).substring(2, 9),
         product: fullProduct,
         quantity: 1,
-        selectedUnitId: fullProduct.units && fullProduct.units.length > 0 ? fullProduct.units[0].id.toString() : "",
+        selectedUnitId: smartUnitId,
       };
 
       setCart([...cart, newItem]);
@@ -182,7 +193,7 @@ export default function BillingPage() {
             alert("This specific unit (IMEI) is already in the cart.");
             return prev;
           }
-          return [...prev, { product, quantity: 1, selectedUnitId: unitId }];
+          return [...prev, { cartItemId: Math.random().toString(36).substring(2, 9), product, quantity: 1, selectedUnitId: unitId }];
         });
       }
     } catch (err) {
@@ -215,22 +226,22 @@ export default function BillingPage() {
 
 
 
-  const removeFromCart = (productId: number, unitId?: string) => {
-    setCart(cart.filter((item) => !(item.product.id === productId && (!unitId || item.selectedUnitId === unitId))));
+  const removeFromCart = (cartItemId: string) => {
+    setCart(cart.filter((item) => item.cartItemId !== cartItemId));
   };
 
-  const updateQuantity = (productId: number, qty: number) => {
+  const updateQuantity = (cartItemId: string, qty: number) => {
     setCart(
       cart.map((item) =>
-        item.product.id === productId ? { ...item, quantity: qty } : item
+        item.cartItemId === cartItemId ? { ...item, quantity: qty } : item
       )
     );
   };
 
-  const updateSelectedUnit = (productId: number, unitId: string) => {
+  const updateSelectedUnit = (cartItemId: string, unitId: string) => {
     setCart(
       cart.map((item) =>
-        item.product.id === productId ? { ...item, selectedUnitId: unitId } : item
+        item.cartItemId === cartItemId ? { ...item, selectedUnitId: unitId } : item
       )
     );
   };
@@ -470,8 +481,8 @@ export default function BillingPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                {cart.map((item, idx) => (
-                  <tr key={`${item.product.id}-${idx}`} className="hover:bg-gray-50/50">
+                {cart.map((item) => (
+                  <tr key={item.cartItemId} className="hover:bg-gray-50/50">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="font-bold text-gray-900">{item.product.name}</div>
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">{item.product.productType}</div>
@@ -484,13 +495,18 @@ export default function BillingPage() {
                         <select
                           className="border border-gray-300 rounded-md px-2 py-1 text-xs max-w-[180px] font-medium focus:ring-1 focus:ring-blue-500"
                           value={item.selectedUnitId}
-                          onChange={(e) => updateSelectedUnit(item.product.id, e.target.value)}
+                          onChange={(e) => updateSelectedUnit(item.cartItemId, e.target.value)}
                         >
-                          {item.product.units?.map((u: any) => (
-                            <option key={u.id} value={u.id}>
-                              {u.imeiNumber}
-                            </option>
-                          ))}
+                          {item.product.units?.map((u: any) => {
+                            const isAlreadySelected = cart.some(
+                              (cItem) => cItem.product.id === item.product.id && cItem.cartItemId !== item.cartItemId && cItem.selectedUnitId === u.id.toString()
+                            );
+                            return (
+                              <option key={u.id} value={u.id} disabled={isAlreadySelected}>
+                                {u.imeiNumber} {isAlreadySelected ? "(Already Selected)" : ""}
+                              </option>
+                            );
+                          })}
                         </select>
                       ) : (
                         <input
@@ -499,7 +515,7 @@ export default function BillingPage() {
                           max={item.product.quantityInStock}
                           className="border border-gray-300 rounded-md px-2 py-1 text-xs w-16 text-center font-semibold focus:ring-1 focus:ring-blue-500"
                           value={item.quantity}
-                          onChange={(e) => updateQuantity(item.product.id, Math.min(item.product.quantityInStock, Math.max(1, parseInt(e.target.value) || 1)))}
+                          onChange={(e) => updateQuantity(item.cartItemId, Math.min(item.product.quantityInStock, Math.max(1, parseInt(e.target.value) || 1)))}
                           onKeyDown={(e) => handleNumberKeyDown(e, false)}
                           onWheel={(e) => (e.target as HTMLInputElement).blur()}
                         />
@@ -510,7 +526,7 @@ export default function BillingPage() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right text-xs">
                       <button
-                        onClick={() => removeFromCart(item.product.id, item.selectedUnitId)}
+                        onClick={() => removeFromCart(item.cartItemId)}
                         className="text-red-600 hover:text-red-900 font-bold"
                       >
                         Remove
