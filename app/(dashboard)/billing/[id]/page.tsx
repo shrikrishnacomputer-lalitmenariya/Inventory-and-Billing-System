@@ -187,87 +187,12 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      {/* Print-only styles */}
-      <style>{`
-        @media print {
-          /* Set a definitive top margin on the physical printed page */
-          @page {
-            margin: 20mm auto 0 auto; 
-          }
-
-          /* Ensure body doesn't interfere with print */
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-
-          /* CRITICAL: Fix vertical alignment for the print wrapper */
-          .print-page-wrapper {
-            min-height: 100vh !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            background: white !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            position: relative !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100vh !important;
-            page-break-inside: avoid !important;
-          }
-
-          /* Fix vertical alignment for the content container */
-          .print-page-wrapper > div {
-            margin: auto !important;
-            transform: scale(1) !important;
-            transform-origin: center center !important;
-            position: relative !important;
-            top: auto !important;
-            left: auto !important;
-            right: auto !important;
-            bottom: auto !important;
-          }
-
-          /* Ensure the actual invoice content is captured properly */
-          .print-page-wrapper [ref] {
-            opacity: 1 !important;
-            display: block !important;
-            visibility: visible !important;
-            position: relative !important;
-          }
-
-          /* Hide UI elements during print */
-          button, .hidden-on-print {
-            display: none !important;
-          }
-
-          /* Maintain proper colors and appearance */
-          * {
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-        }
-
-        /* Ensure print display classes work */
-        .print-page-wrapper.print\\:bg-white.print\\:flex.print\\:items-center.print\\:justify-center > div {
-          background: white !important;
-        }
-      `}</style>
-
-      {/* Invoice sheet preview with proper print classes */}
-      <div className="bg-white p-8 rounded-lg shadow overflow-x-auto flex justify-center print-page-wrapper print\:bg-white print\:flex print\:items-center print\:justify-center">
+      {/* Invoice sheet preview */}
+      <div className="bg-white p-8 rounded-lg shadow overflow-x-auto flex justify-center bg-gray-100">
         <div
           ref={printComponentRef}
-          style={{ width: "100%", maxWidth: "650px", margin: "0 auto", paddingTop: "20px" }}
+          className="p-1"
+          style={{ width: "100%", maxWidth: "800px", margin: "0 auto" }}
         >
           <InvoiceTemplate
             isDraft={false}

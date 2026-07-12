@@ -90,7 +90,9 @@ export default function InvoiceTemplate({
   const cAmt = taxableAmt * (parseFloat(cgstPercent || "0") / 100);
 
   return (
-    <div className="border-[3px] border-[#1b3f8b] p-4 bg-white text-black font-sans text-[11px] select-none shadow-sm rounded-sm">
+    <div className="border-[3px] border-[#1b3f8b] p-4 bg-white text-black font-sans text-[11px] select-none shadow-sm rounded-sm flex flex-col min-h-[27.6cm]">
+      {/* Header and Table wrapper to push footer down */}
+      <div className="flex-1 flex flex-col">
       {/* Header matching original bill */}
       <div className="border-2 border-[#1b3f8b] p-3 mb-3">
         <div className="flex justify-between items-center border-b border-[#1b3f8b] pb-2 mb-2">
@@ -215,7 +217,7 @@ export default function InvoiceTemplate({
                   {pBrand && <div className="font-extrabold text-[#1b3f8b] text-[9px] uppercase tracking-wider mb-0.5">{pBrand}</div>}
                   <div className="font-bold text-gray-800">{pName}</div>
                   {imei && (
-                    <div className="text-[8px] text-gray-600 font-semibold mt-0.5">
+                    <div className="text-[10px] text-black font-extrabold mt-1">
                       {item.product?.productType === "electronics" ? "S M No." : "IMEI"}: {imei}
                     </div>
                   )}
@@ -238,6 +240,7 @@ export default function InvoiceTemplate({
           ))}
         </tbody>
       </table>
+      </div>
 
       {/* Bottom section with totals & bank details */}
       <div className="grid grid-cols-2 gap-4 mb-3 text-[10px]">
