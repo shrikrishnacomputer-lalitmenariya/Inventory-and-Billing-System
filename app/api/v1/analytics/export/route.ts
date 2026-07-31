@@ -32,6 +32,12 @@ export async function GET(req: Request) {
             name: true,
           },
         },
+        billItems: {
+          include: {
+            product: true,
+            productUnit: true
+          }
+        }
       },
       orderBy: {
         createdAt: "desc",
@@ -46,6 +52,9 @@ export async function GET(req: Request) {
     worksheet.columns = [
       { header: "Bill Number", key: "billNumber" },
       { header: "Date", key: "date" },
+      { header: "Brand Name", key: "brandName" },
+      { header: "Product Name", key: "productName" },
+      { header: "IMEI / SN", key: "imeiNumber" },
       { header: "Customer Name", key: "customerName" },
       { header: "Customer Phone", key: "customerPhone" },
       { header: "Payment Mode", key: "paymentMode" },
@@ -55,19 +64,69 @@ export async function GET(req: Request) {
       { header: "Billed By", key: "billedBy" },
     ];
 
-    // Add rows from DB query
+    // Add rows from DB query and merge cells for multi-item bills
+    let currentRow = 2; // Row 1 is header
+
     bills.forEach((b) => {
-      worksheet.addRow({
-        billNumber: b.billNumber,
-        date: new Date(b.createdAt),
-        customerName: b.customer?.name || "Guest",
-        customerPhone: b.customer?.phone || "-",
-        paymentMode: b.paymentMode.toUpperCase(),
-        subtotal: Number(Number(Number(b.totalAmount) + Number(b.discount)).toFixed(2)),
-        discount: Number(Number(b.discount).toFixed(2)),
-        grandTotal: Number(Number(b.totalAmount).toFixed(2)),
-        billedBy: b.user.name,
-      });
+      const itemsCount = b.billItems.length || 1;
+      const startRow = currentRow;
+      const endRow = startRow + itemsCount - 1;
+
+      if (b.billItems.length === 0) {
+        worksheet.addRow({
+          billNumber: b.billNumber,
+          date: new Date(b.createdAt),
+          brandName: "-",
+          productName: "No items",
+          imeiNumber: "-",
+          customerName: b.customer?.name || "Guest",
+          customerPhone: b.customer?.phone || "-",
+          paymentMode: b.paymentMode.toUpperCase(),
+          subtotal: Number(Number(Number(b.totalAmount) + Number(b.discount)).toFixed(2)),
+          discount: Number(Number(b.discount).toFixed(2)),
+          grandTotal: Number(Number(b.totalAmount).toFixed(2)),
+          billedBy: b.user.name,
+        });
+        currentRow++;
+      } else {
+        b.billItems.forEach((item) => {
+          worksheet.addRow({
+            billNumber: b.billNumber,
+            date: new Date(b.createdAt),
+            brandName: item.product.brand || "-",
+            productName: item.product.name,
+            imeiNumber: item.productUnit ? item.productUnit.imeiNumber : "NA",
+            customerName: b.customer?.name || "Guest",
+            customerPhone: b.customer?.phone || "-",
+            paymentMode: b.paymentMode.toUpperCase(),
+            subtotal: Number(Number(Number(b.totalAmount) + Number(b.discount)).toFixed(2)),
+            discount: Number(Number(b.discount).toFixed(2)),
+            grandTotal: Number(Number(b.totalAmount).toFixed(2)),
+            billedBy: b.user.name,
+          });
+          currentRow++;
+        });
+
+        // Merge cells if there are multiple items
+        if (itemsCount > 1) {
+          const columnsToMerge = [
+            "billNumber",
+            "date",
+            "customerName",
+            "customerPhone",
+            "paymentMode",
+            "subtotal",
+            "discount",
+            "grandTotal",
+            "billedBy"
+          ];
+
+          columnsToMerge.forEach((colKey) => {
+            const colIndex = worksheet.columns.findIndex(c => c.key === colKey) + 1;
+            worksheet.mergeCells(startRow, colIndex, endRow, colIndex);
+          });
+        }
+      }
     });
 
     // Style the Header Row

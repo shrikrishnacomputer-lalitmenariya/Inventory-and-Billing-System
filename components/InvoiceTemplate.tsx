@@ -151,21 +151,21 @@ export default function InvoiceTemplate({
       <div className="grid grid-cols-2 border border-[#1b3f8b] mb-3 text-[10px]">
         <div className="p-2 border-r border-[#1b3f8b] flex flex-col justify-between min-h-[50px]">
           <div>
-            <span className="font-extrabold text-[#1b3f8b]">M/s. </span>
-            <span className="underline font-bold text-gray-800">
+            <span className="font-extrabold text-[#1b3f8b] text-[12px]">M/s. </span>
+            <span className="underline font-bold text-gray-800 text-[14px]">
               {customerName || "Guest Customer"}
             </span>
           </div>
           {customerAddress && (
             <div className="mt-0.5">
-              <span className="font-extrabold text-[#1b3f8b]">Address: </span>
-              <span className="font-bold">{customerAddress}</span>
+              <span className="font-extrabold text-[#1b3f8b] text-[12px]">Address: </span>
+              <span className="font-bold text-[13px]">{customerAddress}</span>
             </div>
           )}
           {customerPhone && (
             <div className="mt-0.5">
-              <span className="font-extrabold text-[#1b3f8b]">Phone: </span>
-              <span className="font-bold">{customerPhone}</span>
+              <span className="font-extrabold text-[#1b3f8b] text-[12px]">Phone: </span>
+              <span className="font-bold text-[13px]">{customerPhone}</span>
             </div>
           )}
         </div>
@@ -189,11 +189,11 @@ export default function InvoiceTemplate({
       <table className="w-full border-collapse border border-[#1b3f8b] mb-3 text-[10px]">
         <thead>
           <tr className="border-b border-[#1b3f8b] bg-blue-50/30 text-[#1b3f8b]">
-            <th className="border-r border-[#1b3f8b] p-1.5 text-left w-10 font-extrabold">No.</th>
-            <th className="border-r border-[#1b3f8b] p-1.5 text-left font-extrabold">Particulars</th>
-            <th className="border-r border-[#1b3f8b] p-1.5 text-center w-12 font-extrabold">Qty.</th>
-            <th className="border-r border-[#1b3f8b] p-1.5 text-right w-20 font-extrabold">Rate</th>
-            <th className="p-1.5 text-right w-24 font-extrabold">Amount</th>
+            <th className="border-r border-[#1b3f8b] p-1.5 text-left w-10 font-extrabold text-[12px]">No.</th>
+            <th className="border-r border-[#1b3f8b] p-1.5 text-left font-extrabold text-[12px]">Particulars</th>
+            <th className="border-r border-[#1b3f8b] p-1.5 text-center w-12 font-extrabold text-[12px]">Qty.</th>
+            <th className="border-r border-[#1b3f8b] p-1.5 text-right w-20 font-extrabold text-[12px]">Rate</th>
+            <th className="p-1.5 text-right w-24 font-extrabold text-[12px]">Amount</th>
           </tr>
         </thead>
         <tbody>
@@ -212,19 +212,19 @@ export default function InvoiceTemplate({
 
             return (
               <tr key={idx} className="border-b border-[#1b3f8b]">
-                <td className="border-r border-[#1b3f8b] p-1.5 text-left">{idx + 1}</td>
+                <td className="border-r border-[#1b3f8b] p-1.5 text-left text-[13px]">{idx + 1}</td>
                 <td className="border-r border-[#1b3f8b] p-1.5 text-left">
-                  {pBrand && <div className="font-extrabold text-[#1b3f8b] text-[9px] uppercase tracking-wider mb-0.5">{pBrand}</div>}
-                  <div className="font-bold text-gray-800">{pName}</div>
+                  {pBrand && <div className="font-extrabold text-[#1b3f8b] text-[12px] uppercase tracking-wider mb-0.5">{pBrand}</div>}
+                  <div className="font-bold text-gray-800 text-[14px]">{pName}</div>
                   {imei && (
-                    <div className="text-[10px] text-black font-extrabold mt-1">
+                    <div className="text-[13px] text-black font-extrabold mt-1">
                       {item.product?.productType === "electronics" ? "S M No." : "IMEI"}: {imei}
                     </div>
                   )}
                 </td>
-                <td className="border-r border-[#1b3f8b] p-1.5 text-center font-bold">{pQty}</td>
-                <td className="border-r border-[#1b3f8b] p-1.5 text-right font-bold">₹{pRate}</td>
-                <td className="p-1.5 text-right font-bold">₹{baseTotal.toFixed(2)}</td>
+                <td className="border-r border-[#1b3f8b] p-1.5 text-center font-bold text-[13px]">{pQty}</td>
+                <td className="border-r border-[#1b3f8b] p-1.5 text-right font-bold text-[13px]">₹{pRate}</td>
+                <td className="p-1.5 text-right font-bold text-[13px]">₹{baseTotal.toFixed(2)}</td>
               </tr>
             );
           })}

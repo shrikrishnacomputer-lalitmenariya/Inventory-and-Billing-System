@@ -51,6 +51,14 @@ export async function GET(req: Request) {
       where: {
         status: "completed",
         createdAt: { gte: todayStart }
+      },
+      include: {
+        billItems: {
+          include: {
+            product: true,
+            productUnit: true
+          }
+        }
       }
     });
 
@@ -61,7 +69,29 @@ export async function GET(req: Request) {
       }
     });
 
-    const todaySales = todayBills.reduce((sum, b) => sum + Number(b.totalAmount), 0);
+    let todayProfit = 0;
+    const todaySoldItems: any[] = [];
+    const todaySales = todayBills.reduce((sum, b) => {
+      for (const item of b.billItems) {
+        const itemSellingPrice = Number(item.unitPrice) * item.quantity;
+        const itemCostPrice = item.productUnit
+          ? Number(item.productUnit.costPrice) * item.quantity
+          : Number(item.product.costPrice) * item.quantity;
+        todayProfit += (itemSellingPrice - itemCostPrice);
+        
+        todaySoldItems.push({
+          id: item.id,
+          productName: item.product.name,
+          productType: item.product.productType,
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          lineTotal: Number(item.lineTotal),
+          imeiNumber: item.productUnit?.imeiNumber,
+          billNumber: b.billNumber
+        });
+      }
+      return sum + Number(b.totalAmount);
+    }, 0);
     const monthlySales = monthBills.reduce((sum, b) => sum + Number(b.totalAmount), 0);
 
     // 3. Category-wise stock distribution
@@ -189,7 +219,9 @@ export async function GET(req: Request) {
       totalStockUnits,
       totalStockValue,
       totalCategories,
+      todayProfit,
       todaySales,
+      todaySoldItems,
       monthlySales,
       lowStockCount,
       outOfStockCount,

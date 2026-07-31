@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import SoldItemsHistoryModal from "@/components/SoldItemsHistoryModal";
 import { FaWhatsapp } from "react-icons/fa";
 import {
   AreaChart,
@@ -31,6 +32,8 @@ export default function DashboardPage() {
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappDisconnecting, setWhatsappDisconnecting] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showTodaySalesModal, setShowTodaySalesModal] = useState(false);
+  const [showSoldItemsModal, setShowSoldItemsModal] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -447,23 +450,27 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Total Categories */}
-        <div className="relative group overflow-hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-purple-100">
-          <div className="absolute top-0 left-0 h-1 w-full bg-purple-500"></div>
+        {/* Today's Profit */}
+        <div className="relative group overflow-hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-green-100">
+          <div className="absolute top-0 left-0 h-1 w-full bg-green-500"></div>
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Categories</p>
-              <h3 className="text-2xl xl:text-3xl font-extrabold text-gray-800 mt-2 break-words">{stats?.totalCategories}</h3>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Today's Profit</p>
+              <h3 className="text-2xl xl:text-3xl font-extrabold text-gray-800 mt-2 break-words">₹{stats?.todayProfit?.toFixed(2) || "0.00"}</h3>
             </div>
-            <span className="p-2 bg-purple-55 rounded-lg text-purple-600 text-lg">🏷️</span>
+            <span className="p-2 bg-green-50 rounded-lg text-green-600 text-lg">💸</span>
           </div>
           <p className="text-xs text-gray-500 mt-4 flex items-center gap-1">
-            <span>Distinct product groupings</span>
+            <span className="text-green-600 font-semibold">↑ Current Day</span>
+            <span>net profit generated</span>
           </p>
         </div>
 
         {/* Today's Sales */}
-        <div className="relative group overflow-hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-indigo-100">
+        <div 
+          onClick={() => setShowTodaySalesModal(true)}
+          className="relative group overflow-hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-indigo-300 cursor-pointer"
+        >
           <div className="absolute top-0 left-0 h-1 w-full bg-indigo-500"></div>
           <div className="flex justify-between items-start">
             <div>
@@ -653,10 +660,16 @@ export default function DashboardPage() {
         </div>
 
         {/* Fast-Moving Items */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
+        <div 
+          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group relative"
+          onClick={() => setShowSoldItemsModal(true)}
+        >
+          <div className="absolute top-6 right-6 w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </div>
           <div>
             <h3 className="text-lg font-bold text-gray-800 mb-2">🚀 Fast-Moving Products</h3>
-            <p className="text-xs text-gray-400 mb-6">Top selling items by quantities sold</p>
+            <p className="text-xs text-gray-400 mb-6 group-hover:text-blue-500 transition-colors">Click to view all sold items history</p>
 
             <div className="space-y-4">
               {stats?.movement?.fastMoving?.length === 0 ? (
@@ -804,6 +817,90 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Today's Sales Breakdown Modal */}
+      {showTodaySalesModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Today's Sales Breakdown</h2>
+                <p className="text-xs text-gray-500 mt-1">Detailed list of all items sold today</p>
+              </div>
+              <button
+                onClick={() => setShowTodaySalesModal(false)}
+                className="p-2 hover:bg-red-50 hover:text-red-600 text-gray-400 rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-0 overflow-y-auto custom-scrollbar flex-1 bg-white">
+              {!stats?.todaySoldItems || stats.todaySoldItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <span className="text-4xl mb-3">📭</span>
+                  <p className="text-sm font-semibold">No sales recorded today.</p>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Bill No.</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Item Details</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">IMEI / SN</th>
+                      <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Qty</th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Price / Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {stats.todaySoldItems.map((item: any) => (
+                      <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">#{item.billNumber}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold text-gray-900">{item.productName}</div>
+                          <div className="text-[10px] uppercase font-bold mt-1 tracking-wider text-gray-500 flex items-center gap-1">
+                            {item.productType === "serialized" ? "📱 Phone" : item.productType === "electronics" ? "🔌 Electronics" : "🎧 Accessory"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {item.imeiNumber ? (
+                            <span className="text-xs font-mono font-medium text-gray-700 bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200">
+                              {item.imeiNumber}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">N/A</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="text-sm font-bold text-gray-700">{item.quantity}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="text-xs text-gray-500">₹{item.unitPrice.toFixed(2)} × {item.quantity}</div>
+                          <div className="text-sm font-black text-gray-900 mt-0.5">₹{item.lineTotal.toFixed(2)}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+              <span className="text-xs font-bold text-gray-500 uppercase">Total Items: {stats?.todaySoldItems?.reduce((sum: number, i: any) => sum + i.quantity, 0) || 0}</span>
+              <span className="text-lg font-black text-indigo-600">Total Sales: ₹{stats?.todaySales?.toFixed(2) || "0.00"}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <SoldItemsHistoryModal 
+        isOpen={showSoldItemsModal}
+        onClose={() => setShowSoldItemsModal(false)}
+      />
 
     </div>
   );
