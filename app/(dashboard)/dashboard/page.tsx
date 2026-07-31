@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { QRCodeSVG } from 'qrcode.react';
 import SoldItemsHistoryModal from "@/components/SoldItemsHistoryModal";
 import { FaWhatsapp } from "react-icons/fa";
 import {
@@ -777,9 +778,9 @@ export default function DashboardPage() {
               {/* QR Display Area */}
               <div className="w-52 h-52 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center p-3 relative mb-5">
                 {whatsappSettings?.qrCode ? (
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(whatsappSettings.qrCode)}`}
-                    alt="Scan QR Code"
+                  <QRCodeSVG
+                    value={whatsappSettings.qrCode}
+                    size={200}
                     className="w-full h-full object-contain rounded-lg bg-white shadow-sm"
                   />
                 ) : (

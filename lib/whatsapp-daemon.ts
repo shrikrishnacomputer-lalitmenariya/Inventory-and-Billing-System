@@ -44,6 +44,7 @@ const TIMEOUT_MS = parseInt(process.env.WHATSAPP_TIMEOUT || '60000');
 // Global state
 let globalWhatsappSocket: WASocket | null = null;
 let globalConnectionActive = false;
+let cachedWaVersion: any = null;
 
 export async function initWhatsappSocket(force = false) {
   // Prevent multiple simultaneous initializations
@@ -100,13 +101,20 @@ export async function initWhatsappSocket(force = false) {
 
     // Enhanced auth state configuration for production
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
-    const { version, isLatest } = await fetchLatestBaileysVersion();
-    console.log(`[Production] using WA v${version.join('.')}, isLatest: ${isLatest}`);
+    let versionToUse = cachedWaVersion;
+    if (!versionToUse) {
+      const { version, isLatest } = await fetchLatestBaileysVersion();
+      console.log(`[Production] using WA v${version.join('.')}, isLatest: ${isLatest}`);
+      cachedWaVersion = version;
+      versionToUse = version;
+    } else {
+      console.log(`[Production] using cached WA v${versionToUse.join('.')}`);
+    }
 
     const sock = makeWASocket({
-      version,
+      version: versionToUse,
       auth: state,
-      browser: Browsers.macOS('Desktop'),
+      browser: Browsers.ubuntu('Chrome'),
       printQRInTerminal: true,
       defaultQueryTimeoutMs: TIMEOUT_MS,
       logger: logger,
