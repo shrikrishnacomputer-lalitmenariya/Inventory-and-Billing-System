@@ -5,28 +5,28 @@
  * running on Railway. Falls back to local daemon in development.
  */
 
-const WHATSAPP_BOT_URL = process.env.WHATSAPP_BOT_URL; // e.g. "https://whatsapp-bot-production.up.railway.app"
-const WHATSAPP_API_KEY = process.env.WHATSAPP_API_KEY;
-
 /**
  * Check if the bot microservice is configured.
  * In local dev, we fall back to the in-process daemon.
  */
 export function isBotConfigured(): boolean {
-  return !!(WHATSAPP_BOT_URL && WHATSAPP_API_KEY);
+  return !!(process.env.WHATSAPP_BOT_URL && process.env.WHATSAPP_API_KEY);
 }
 
 async function botFetch(endpoint: string, options: RequestInit = {}) {
-  if (!WHATSAPP_BOT_URL || !WHATSAPP_API_KEY) {
+  const botUrl = process.env.WHATSAPP_BOT_URL;
+  const apiKey = process.env.WHATSAPP_API_KEY;
+
+  if (!botUrl || !apiKey) {
     throw new Error("WHATSAPP_BOT_URL or WHATSAPP_API_KEY not configured");
   }
 
-  const url = `${WHATSAPP_BOT_URL}${endpoint}`;
+  const url = `${botUrl}${endpoint}`;
   const res = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": WHATSAPP_API_KEY,
+      "x-api-key": apiKey,
       ...options.headers,
     },
   });
