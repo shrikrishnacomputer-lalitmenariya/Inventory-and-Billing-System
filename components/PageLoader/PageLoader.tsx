@@ -61,7 +61,7 @@ export default function PageLoader({ onComplete }: PageLoaderProps) {
           className="w-24 h-24 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden shadow-md border border-slate-100 dark:border-slate-800 flex items-center justify-center shrink-0 mb-6"
         >
           <Image 
-            src="/logo.png" 
+            src="/shreekrishnalogo1.jpg" 
             alt="Shree Krishna Computers Logo" 
             width={96} 
             height={96} 

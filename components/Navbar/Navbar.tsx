@@ -101,7 +101,7 @@ export default function Navbar() {
           <Link href="/" onClick={handleLogoClick} className="flex items-center gap-1.5 min-[350px]:gap-2 sm:gap-3 group">
             <div className="flex h-9 w-9 min-[350px]:h-10 min-[350px]:w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-white overflow-hidden shadow-sm border border-slate-200/50 transition-transform group-hover:scale-105 duration-300 shrink-0">
               <Image 
-                src="/logo.png" 
+                src="/shreekrishnalogo1.jpg" 
                 alt="Shree Krishna Computers Logo" 
                 width={48} 
                 height={48} 
