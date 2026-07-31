@@ -288,7 +288,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="shrink-0 flex flex-col items-center gap-3">
-          {!whatsappSettings || whatsappSettings.status === "disconnected" ? (
+          {!whatsappSettings || whatsappSettings.status === "disconnected" || (whatsappSettings.status === "connecting" && whatsappSettings.qrCode) ? (
             <button
               onClick={handleConnectWhatsapp}
               disabled={whatsappLoading}
@@ -305,21 +305,13 @@ export default function DashboardPage() {
               {whatsappDisconnecting ? "Disconnecting..." : "❌ Disconnect Session"}
             </button>
           ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowQrModal(true)}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm transition shadow-sm hover:shadow-md"
-              >
-                📋 Scan QR Code
-              </button>
-              <button
-                onClick={handleCancelPairing}
-                disabled={whatsappDisconnecting}
-                className="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 px-4 rounded-lg text-sm border border-red-200 transition"
-              >
-                Cancel
-              </button>
-            </div>
+            <button
+              disabled
+              className="bg-amber-100 text-amber-700 font-bold py-2.5 px-6 rounded-lg text-sm flex items-center gap-2"
+            >
+              <div className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin"></div>
+              Connecting...
+            </button>
           )}
         </div>
       </div>
