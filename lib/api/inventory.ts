@@ -14,11 +14,13 @@ export async function createCategory(data: { name: string; parentCategoryId?: nu
   return res.json();
 }
 
-export async function getProducts(categoryId?: number, search?: string, excludeCategoryName?: string) {
+export async function getProducts(categoryId?: number, search?: string, excludeCategoryName?: string, page?: number, limit?: number) {
   const params = new URLSearchParams();
   if (categoryId) params.append("categoryId", categoryId.toString());
   if (search) params.append("search", search);
   if (excludeCategoryName) params.append("excludeCategoryName", excludeCategoryName);
+  if (page !== undefined) params.append("page", page.toString());
+  if (limit !== undefined) params.append("limit", limit.toString());
 
   const url = `/api/v1/products${params.toString() ? `?${params.toString()}` : ""}`;
   const res = await fetch(url);

@@ -12,17 +12,32 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    const pageStr = searchParams.get("page");
+    const limitStr = searchParams.get("limit");
+    
+    let page = 1;
+    let limit = 50;
+    
+    if (pageStr) page = parseInt(pageStr);
+    if (limitStr) limit = parseInt(limitStr);
+    
+    const skip = limit > 0 ? (page - 1) * limit : 0;
+    const take = limit > 0 ? limit : undefined;
+
+    const where = {
+      paymentStatus: "PAID",
+      NOT: { billNumber: { startsWith: "QS-" } },
+      OR: [
+        { billNumber: { contains: search } },
+        { customer: { phone: { contains: search } } },
+        { customer: { name: { contains: search } } },
+      ],
+    };
 
     const bills = await prisma.bill.findMany({
-      where: {
-        paymentStatus: "PAID",
-        NOT: { billNumber: { startsWith: "QS-" } },
-        OR: [
-          { billNumber: { contains: search } },
-          { customer: { phone: { contains: search } } },
-          { customer: { name: { contains: search } } },
-        ],
-      },
+      where,
+      skip,
+      take,
       include: {
         customer: true,
         user: {
@@ -42,6 +57,17 @@ export async function GET(req: Request) {
         createdAt: "desc",
       },
     });
+
+    const total = limit > 0 ? await prisma.bill.count({ where }) : bills.length;
+    const hasMore = limit > 0 ? skip + bills.length < total : false;
+
+    if (pageStr || limitStr) {
+      return NextResponse.json({
+        items: bills,
+        hasMore,
+        total
+      });
+    }
 
     return NextResponse.json(bills);
   } catch (error) {

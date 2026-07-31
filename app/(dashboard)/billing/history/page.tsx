@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { getBills, getBill } from "@/lib/api/billing";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -62,11 +62,36 @@ export default function BillingHistoryPage() {
   const [savingCustomer, setSavingCustomer] = useState(false);
   const [selectedBill, setSelectedBill] = useState<any>(null);
 
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Observer for infinite scroll
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLTableRowElement | null) => {
+    if (loading) return;
+    if (observer.current) observer.current.disconnect();
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(prev => prev + 1);
+      }
+    });
+    
+    if (node) observer.current.observe(node);
+  }, [loading, hasMore]);
+
   const { role } = useAuth();
 
+  // Reset page on search
+  useEffect(() => {
+    setPage(1);
+    setBills([]);
+  }, [search]);
+
+  // Load bills on page/search change
   useEffect(() => {
     loadBills();
-  }, [search]);
+  }, [page, search]);
 
   // Polling for real-time WhatsApp status updates
   useEffect(() => {
@@ -83,8 +108,26 @@ export default function BillingHistoryPage() {
   const loadBills = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const data = await getBills(search);
-      setBills(data);
+      const res: any = await getBills(search, page, 50);
+      if (res.items) {
+        if (page === 1) {
+          setBills(res.items);
+        } else {
+          setBills(prev => {
+            // avoid duplicates on silent reload
+            if (silent) {
+               const newItems = res.items.filter((item: any) => !prev.find(p => p.id === item.id));
+               return [...prev, ...newItems];
+            }
+            return [...prev, ...res.items];
+          });
+        }
+        setHasMore(res.hasMore);
+      } else {
+        // Fallback backward compatibility
+        setBills(Array.isArray(res) ? res : []);
+        setHasMore(false);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -247,8 +290,10 @@ export default function BillingHistoryPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {bills.map((bill) => (
-                <tr key={bill.id}>
+              {bills.map((bill, index) => {
+                const isLast = bills.length === index + 1;
+                return (
+                <tr key={bill.id} ref={isLast ? lastElementRef : null}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(bill.createdAt).toLocaleDateString("en-IN")}
                   </td>
@@ -340,7 +385,7 @@ export default function BillingHistoryPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )})}
               {bills.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-6 py-4 text-center text-gray-500">

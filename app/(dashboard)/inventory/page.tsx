@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getProducts, getCategories, updateProduct, deleteProduct, createCategory, quickSell } from "@/lib/api/inventory";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +17,9 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
   const [showStockScanner, setShowStockScanner] = useState(false);
   const [quickSellData, setQuickSellData] = useState<Record<number, string>>({});
   const [quickSellingId, setQuickSellingId] = useState<number | null>(null);
@@ -43,9 +46,59 @@ export default function InventoryPage() {
 
   // Category Selector states are fully encapsulated in CategorySelector component
 
+  // Observer for infinite scroll
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLTableRowElement | null) => {
+    if (loading) return;
+    if (observer.current) observer.current.disconnect();
+    
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(prev => prev + 1);
+      }
+    });
+    
+    if (node) observer.current.observe(node);
+  }, [loading, hasMore]);
+
+  // Fetch categories once
   useEffect(() => {
-    loadData();
+    getCategories().then(setCategories).catch(console.error);
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+    setProducts([]);
   }, [search, selectedCategory]);
+
+  // Fetch products
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        const res: any = await getProducts(selectedCategory, search, undefined, page, 50);
+        if (res.items) {
+          if (page === 1) {
+            setProducts(res.items);
+          } else {
+            setProducts(prev => [...prev, ...res.items]);
+          }
+          setHasMore(res.hasMore);
+        } else {
+          // Backward compatibility
+          setProducts(Array.isArray(res) ? res : []);
+          setHasMore(false);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadProducts();
+  }, [page, search, selectedCategory, reloadTrigger]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -145,21 +198,7 @@ export default function InventoryPage() {
     }
   };
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [prods, cats] = await Promise.all([
-        getProducts(selectedCategory, search),
-        getCategories()
-      ]);
-      setProducts(prods);
-      setCategories(cats);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // loadData function replaced by loadProducts useEffect
 
   const handleEditClick = (product: any) => {
     setEditingProduct(product);
@@ -192,7 +231,9 @@ export default function InventoryPage() {
     if (confirm("Are you sure you want to delete this product?")) {
       try {
         await deleteProduct(productId);
-        loadData();
+        setPage(1);
+        setProducts([]);
+        setReloadTrigger(prev => prev + 1);
       } catch (err: any) {
         alert(err.message || "Failed to delete product");
       }
@@ -224,7 +265,9 @@ export default function InventoryPage() {
       });
       setSavingEdit(false);
       setEditingProduct(null);
-      await loadData();
+      setPage(1);
+      setProducts([]);
+      setReloadTrigger(prev => prev + 1);
     } catch (err: any) {
       console.error("Update error:", err);
       setEditError(err.message || "Failed to update product");
@@ -253,7 +296,9 @@ export default function InventoryPage() {
       // Clear input
       setQuickSellData(prev => ({ ...prev, [product.id]: "" }));
       // Reload data to reflect new stock
-      await loadData();
+      setPage(1);
+      setProducts([]);
+      setReloadTrigger(prev => prev + 1);
       alert(`Item sold successfully! Remaining stock: ${product.quantityInStock - qty}`);
     } catch (err: any) {
       alert(err.message || "Failed to process quick sell.");
@@ -338,8 +383,10 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {products.map((product) => (
-                <tr key={product.id}>
+              {products.map((product, index) => {
+                const isLast = products.length === index + 1;
+                return (
+                <tr key={product.id} ref={isLast ? lastElementRef : null}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       {product.imageUrl ? (
@@ -457,7 +504,7 @@ export default function InventoryPage() {
                     </td>
                   )}
                 </tr>
-              ))}
+              )})}
               {products.length === 0 && (
                 <tr>
                   <td colSpan={role === "owner" ? 6 : 4} className="px-6 py-4 text-center text-gray-500">

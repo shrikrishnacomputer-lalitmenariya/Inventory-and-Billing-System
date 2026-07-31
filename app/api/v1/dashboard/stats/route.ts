@@ -10,21 +10,20 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 1. Basic Counts
-    const totalProducts = await prisma.product.count({
-      where: { isActive: true }
+    // 1. Basic Counts & Stock
+    // Fetch only needed fields instead of entire product row
+    const productsLite = await prisma.product.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, quantityInStock: true, costPrice: true, lowStockThreshold: true }
     });
 
-    const products = await prisma.product.findMany({
-      where: { isActive: true }
-    });
-
+    const totalProducts = productsLite.length;
     let totalStockUnits = 0;
     let lowStockCount = 0;
     let outOfStockCount = 0;
     let totalStockValue = 0;
 
-    for (const p of products) {
+    for (const p of productsLite) {
       totalStockUnits += p.quantityInStock;
       totalStockValue += Number(p.costPrice) * p.quantityInStock;
       if (p.quantityInStock === 0) {
@@ -38,13 +37,9 @@ export async function GET(req: Request) {
       where: { isActive: true }
     });
 
-    // 2. Sales calculations (Today's Sales, Monthly Sales)
+    // 2. Sales calculations (Today & Month)
     const now = new Date();
-    
-    // Today Start
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    // Monthly Start
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const todayBills = await prisma.bill.findMany({
@@ -62,16 +57,12 @@ export async function GET(req: Request) {
       }
     });
 
-    const monthBills = await prisma.bill.findMany({
-      where: {
-        status: "completed",
-        createdAt: { gte: monthStart }
-      }
-    });
-
     let todayProfit = 0;
+    let todaySales = 0;
     const todaySoldItems: any[] = [];
-    const todaySales = todayBills.reduce((sum, b) => {
+    
+    for (const b of todayBills) {
+      todaySales += Number(b.totalAmount);
       for (const item of b.billItems) {
         const itemSellingPrice = Number(item.unitPrice) * item.quantity;
         const itemCostPrice = item.productUnit
@@ -90,26 +81,45 @@ export async function GET(req: Request) {
           billNumber: b.billNumber
         });
       }
-      return sum + Number(b.totalAmount);
-    }, 0);
-    const monthlySales = monthBills.reduce((sum, b) => sum + Number(b.totalAmount), 0);
+    }
+
+    const monthlySalesAgg = await prisma.bill.aggregate({
+      where: {
+        status: "completed",
+        createdAt: { gte: monthStart }
+      },
+      _sum: { totalAmount: true }
+    });
+    const monthlySales = Number(monthlySalesAgg._sum.totalAmount || 0);
 
     // 3. Category-wise stock distribution
     const categories = await prisma.category.findMany({
       where: { isActive: true },
-      include: {
+      select: {
+        name: true,
         products: {
-          where: { isActive: true }
+          where: { isActive: true },
+          select: { quantityInStock: true }
         }
       }
     });
 
-    const categoryStock = categories.map(cat => {
-      const stock = cat.products.reduce((sum, p) => sum + p.quantityInStock, 0);
-      return { name: cat.name, stock };
-    }).filter(c => c.stock > 0);
+    const categoryStock = categories.map(cat => ({
+      name: cat.name,
+      stock: cat.products.reduce((sum, p) => sum + p.quantityInStock, 0)
+    })).filter(c => c.stock > 0);
 
     // 4. Sales trends
+    // Fetch all completed bills from the last 6 months once (selecting only date & amount)
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const allRecentBills = await prisma.bill.findMany({
+      where: {
+        status: "completed",
+        createdAt: { gte: sixMonthsAgo }
+      },
+      select: { createdAt: true, totalAmount: true }
+    });
+
     // Daily trend (last 7 days)
     const dailyTrend: { name: string; sales: number }[] = [];
     for (let i = 6; i >= 0; i--) {
@@ -117,16 +127,13 @@ export async function GET(req: Request) {
       d.setDate(d.getDate() - i);
       const dateStr = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
       
-      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
       
-      const dayBills = await prisma.bill.findMany({
-        where: {
-          status: "completed",
-          createdAt: { gte: start, lt: end }
-        }
-      });
-      const daySales = dayBills.reduce((sum, b) => sum + Number(b.totalAmount), 0);
+      const daySales = allRecentBills
+        .filter(b => b.createdAt.getTime() >= start && b.createdAt.getTime() < end)
+        .reduce((sum, b) => sum + Number(b.totalAmount), 0);
+        
       dailyTrend.push({ name: dateStr, sales: daySales });
     }
 
@@ -136,18 +143,17 @@ export async function GET(req: Request) {
       const dStart = new Date();
       dStart.setDate(dStart.getDate() - (i * 7 + 6));
       dStart.setHours(0, 0, 0, 0);
+      const start = dStart.getTime();
       
       const dEnd = new Date();
       dEnd.setDate(dEnd.getDate() - (i * 7));
       dEnd.setHours(23, 59, 59, 999);
+      const end = dEnd.getTime();
 
-      const weekBills = await prisma.bill.findMany({
-        where: {
-          status: "completed",
-          createdAt: { gte: dStart, lte: dEnd }
-        }
-      });
-      const weekSales = weekBills.reduce((sum, b) => sum + Number(b.totalAmount), 0);
+      const weekSales = allRecentBills
+        .filter(b => b.createdAt.getTime() >= start && b.createdAt.getTime() <= end)
+        .reduce((sum, b) => sum + Number(b.totalAmount), 0);
+        
       weeklyTrend.push({ name: `Week -${i}`, sales: weekSales });
     }
 
@@ -157,59 +163,54 @@ export async function GET(req: Request) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthLabel = d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
       
-      const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
       
-      const mBills = await prisma.bill.findMany({
-        where: {
-          status: "completed",
-          createdAt: { gte: start, lt: end }
-        }
-      });
-      const mSales = mBills.reduce((sum, b) => sum + Number(b.totalAmount), 0);
+      const mSales = allRecentBills
+        .filter(b => b.createdAt.getTime() >= start && b.createdAt.getTime() < end)
+        .reduce((sum, b) => sum + Number(b.totalAmount), 0);
+        
       monthlyTrend.push({ name: monthLabel, sales: mSales });
     }
 
     // 5. Product Movement (Fast/Slow moving products)
-    const billItems = await prisma.billItem.findMany({
+    // Filtered to last 30 days, using database grouping!
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const movementAgg = await prisma.billItem.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true },
       where: {
-        bill: { status: "completed" }
-      },
-      include: {
-        product: true
+        bill: {
+          status: "completed",
+          createdAt: { gte: thirtyDaysAgo }
+        }
       }
     });
 
-    const productSalesMap: { [key: number]: { name: string; quantity: number } } = {};
-    
-    // Initialize active products in map with 0 quantity
-    for (const p of products) {
-      productSalesMap[p.id] = { name: p.name, quantity: 0 };
-    }
-
-    for (const item of billItems) {
-      if (productSalesMap[item.productId]) {
-        productSalesMap[item.productId].quantity += item.quantity;
-      }
-    }
-
-    const movementList = Object.entries(productSalesMap).map(([id, data]) => ({
-      id: parseInt(id),
-      name: data.name,
-      quantity: data.quantity
-    }));
-
-    // Sort to find fast moving
-    const fastMoving = [...movementList]
+    const fastMoving = movementAgg
+      .map(agg => {
+        const p = productsLite.find(prod => prod.id === agg.productId);
+        return {
+          id: agg.productId,
+          name: p ? p.name : "Unknown",
+          quantity: agg._sum.quantity || 0
+        };
+      })
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5)
       .filter(p => p.quantity > 0);
 
-    // Sort to find slow moving (only active products, prioritizing those with stock but low sales)
-    const slowMoving = [...movementList]
-      .filter(m => {
-        const p = products.find(prod => prod.id === m.id);
-        return p && p.quantityInStock > 0;
+    const slowMoving = productsLite
+      .filter(p => p.quantityInStock > 0)
+      .map(p => {
+        const agg = movementAgg.find(a => a.productId === p.id);
+        return {
+          id: p.id,
+          name: p.name,
+          quantity: agg ? (agg._sum.quantity || 0) : 0
+        };
       })
       .sort((a, b) => a.quantity - b.quantity)
       .slice(0, 5);

@@ -56,8 +56,23 @@ export async function GET(req: Request) {
       ];
     }
 
+    const pageStr = searchParams.get("page");
+    const limitStr = searchParams.get("limit");
+    
+    let page = 1;
+    let limit = 50;
+    
+    if (pageStr) page = parseInt(pageStr);
+    if (limitStr) limit = parseInt(limitStr);
+    
+    // Support bypassing pagination if limit is 0 or -1 (or just very large)
+    const skip = limit > 0 ? (page - 1) * limit : 0;
+    const take = limit > 0 ? limit : undefined;
+
     const products = await prisma.product.findMany({
       where,
+      skip,
+      take,
       include: {
         category: {
           include: {
@@ -75,16 +90,28 @@ export async function GET(req: Request) {
       },
     });
 
+    const total = limit > 0 ? await prisma.product.count({ where }) : products.length;
+    const hasMore = limit > 0 ? skip + products.length < total : false;
+
     // Mask cost price for staff
+    let finalProducts = products;
     if (session.user.role === "staff") {
-      const maskedProducts = products.map((product) => {
+      finalProducts = products.map((product) => {
         const { costPrice, ...rest } = product;
-        return rest;
+        return rest as any;
       });
-      return NextResponse.json(maskedProducts);
     }
 
-    return NextResponse.json(products);
+    if (pageStr || limitStr) {
+      return NextResponse.json({
+        items: finalProducts,
+        hasMore,
+        total
+      });
+    }
+
+    // Backward compatibility for calls without pagination params
+    return NextResponse.json(finalProducts);
   } catch (error) {
     console.error("Error fetching products:", error);
     return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });

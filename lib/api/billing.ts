@@ -30,8 +30,13 @@ export async function createBill(data: {
   return res.json();
 }
 
-export async function getBills(search?: string) {
-  const url = `/api/v1/bills${search ? `?search=${search}` : ""}`;
+export async function getBills(search?: string, page?: number, limit?: number) {
+  const params = new URLSearchParams();
+  if (search) params.append("search", search);
+  if (page !== undefined) params.append("page", page.toString());
+  if (limit !== undefined) params.append("limit", limit.toString());
+
+  const url = `/api/v1/bills${params.toString() ? `?${params.toString()}` : ""}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("Failed to fetch bills");
   return res.json();

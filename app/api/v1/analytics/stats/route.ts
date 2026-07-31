@@ -25,11 +25,13 @@ export async function GET(req: Request) {
           gte: startDate,
         },
       },
-      include: {
+      select: {
+        totalAmount: true,
         billItems: {
-          include: {
-            product: true,
-            productUnit: true,
+          select: {
+            quantity: true,
+            product: { select: { costPrice: true } },
+            productUnit: { select: { costPrice: true } },
           },
         },
       },
