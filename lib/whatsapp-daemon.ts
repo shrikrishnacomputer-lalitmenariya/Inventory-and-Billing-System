@@ -1,6 +1,7 @@
 import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
+  fetchLatestBaileysVersion,
   WASocket
 } from '@whiskeysockets/baileys';
 import { prisma } from './prisma';
@@ -98,11 +99,13 @@ export async function initWhatsappSocket(force = false) {
 
     // Enhanced auth state configuration for production
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+    console.log(`[Production] using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
-    // Enhanced socket configuration for production
     const sock = makeWASocket({
+      version,
       auth: state,
-      printQRInTerminal: false,
+      printQRInTerminal: true,
       defaultQueryTimeoutMs: TIMEOUT_MS,
       logger: logger,
       shouldSyncHistoryMessage: () => false,
