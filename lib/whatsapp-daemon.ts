@@ -2,6 +2,7 @@ import makeWASocket, {
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
+  Browsers,
   WASocket
 } from '@whiskeysockets/baileys';
 import { prisma } from './prisma';
@@ -105,6 +106,7 @@ export async function initWhatsappSocket(force = false) {
     const sock = makeWASocket({
       version,
       auth: state,
+      browser: Browsers.macOS('Desktop'),
       printQRInTerminal: true,
       defaultQueryTimeoutMs: TIMEOUT_MS,
       logger: logger,
