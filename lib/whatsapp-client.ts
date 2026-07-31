@@ -21,13 +21,13 @@ async function botFetch(endpoint: string, options: RequestInit = {}) {
     throw new Error("WHATSAPP_BOT_URL or WHATSAPP_API_KEY not configured");
   }
 
-  const url = `${botUrl}${endpoint}`;
-  const res = await fetch(url, {
+  const res = await fetch(`${botUrl}${endpoint}`, {
     ...options,
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
-      ...options.headers,
+      ...(options.headers || {}),
     },
   });
 
