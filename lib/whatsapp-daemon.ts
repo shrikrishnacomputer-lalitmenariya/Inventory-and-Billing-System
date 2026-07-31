@@ -118,7 +118,6 @@ export async function initWhatsappSocket(force = false) {
       printQRInTerminal: true,
       defaultQueryTimeoutMs: TIMEOUT_MS,
       logger: logger,
-      shouldSyncHistoryMessage: () => false,
       fireInitQueries: true,
       markOnlineOnConnect: false,
     });
