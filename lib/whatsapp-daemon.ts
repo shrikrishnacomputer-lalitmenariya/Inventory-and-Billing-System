@@ -93,6 +93,18 @@ export async function initWhatsappSocket(force = false) {
       });
     }
 
+    // ── Dead-man's switch ────────────────────────────────────────────────────
+    // Before writing 'connecting', re-read the DB. If it was manually reset to
+    // 'disconnected' while we were starting up, abort immediately so we don't
+    // overwrite the manual reset (kills zombie Vercel instances).
+    const freshCheck = await prisma.whatsappSettings.findFirst({ where: { id: settings.id } });
+    if (freshCheck?.status === 'disconnected') {
+      console.log('[Daemon] DB was reset to disconnected externally. Aborting daemon startup.');
+      isInitializing = false;
+      return null;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // Update settings to connecting state
     await prisma.whatsappSettings.update({
       where: { id: settings.id },
@@ -137,6 +149,15 @@ export async function initWhatsappSocket(force = false) {
       if (qr) {
         console.log('📱 [Production] New QR code generated!');
 
+        // Dead-man's switch: if DB was manually reset to disconnected, abort
+        const currentStatus = await prisma.whatsappSettings.findFirst({ where: { id: settings.id } });
+        if (currentStatus?.status === 'disconnected') {
+          console.log('[Daemon] DB reset detected during QR generation. Closing socket.');
+          try { sock.end(undefined); } catch (e) { /* ignore */ }
+          globalWhatsappSocket = null;
+          return;
+        }
+
         // Save QR to file for debugging
         const qrFile = path.join(sessionDir, `qr-${Date.now()}.txt`);
         fs.writeFileSync(qrFile, qr);
@@ -160,25 +181,17 @@ export async function initWhatsappSocket(force = false) {
 
       if (connection === 'close') {
         globalConnectionActive = false;
+        globalWhatsappSocket = null;
         const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-        console.log(`[Production] WhatsApp disconnected (code: ${statusCode}). ${shouldReconnect ? 'Reconnecting...' : 'Session ended.'}`);
+        console.log(`[Local Daemon] WhatsApp disconnected (code: ${statusCode}). Resetting DB to disconnected.`);
 
-        if (!shouldReconnect) {
-          globalWhatsappSocket = null;
-        } else {
-          // Auto-reconnect with exponential backoff for production
-          const backoffDelay = Math.min(5000 * Math.pow(2, initializationRetries), 300000);
-          console.log(`[Production] Reconnecting in ${backoffDelay / 1000} seconds...`);
-
-          setTimeout(() => {
-            initializationRetries++;
-            initWhatsappSocket(true).catch(err => {
-              console.error('[Production] Reconnection failed:', err);
-            });
-          }, backoffDelay);
-        }
+        // Reset DB to disconnected — no auto-reconnect.
+        // In local dev, just click Connect again on the dashboard.
+        await prisma.whatsappSettings.update({
+          where: { id: settings.id },
+          data: { status: "disconnected", qrCode: null }
+        }).catch(() => {}); // ignore DB errors on cleanup
       }
     });
 
@@ -190,22 +203,20 @@ export async function initWhatsappSocket(force = false) {
 
   } catch (error: any) {
     isInitializing = false;
-    initializationRetries++;
 
-    console.error(`❌ [Production] WhatsApp initialization attempt ${initializationRetries} failed:`, error);
+    console.error(`❌ [Local Daemon] WhatsApp initialization failed:`, error);
 
-    if (initializationRetries >= MAX_RETRIES) {
-      throw new Error(`Failed to initialize WhatsApp after ${MAX_RETRIES} attempts: ${error}`);
-    }
-
-    const backoffDelay = Math.min(2000 * Math.pow(2, initializationRetries - 1), 30000);
-    console.log(`[Production] Retrying in ${backoffDelay / 1000} seconds...`);
-
-    setTimeout(() => {
-      initWhatsappSocket().catch(err => {
-        console.error('[Production] WhatsApp initialization failed permanently:', err);
-      });
-    }, backoffDelay);
+    // Reset DB to disconnected on failure — no auto-retry.
+    // In local dev, just click Connect again on the dashboard.
+    try {
+      const s = await prisma.whatsappSettings.findFirst();
+      if (s) {
+        await prisma.whatsappSettings.update({
+          where: { id: s.id },
+          data: { status: "disconnected", qrCode: null }
+        });
+      }
+    } catch { /* ignore */ }
 
     throw error;
   }
