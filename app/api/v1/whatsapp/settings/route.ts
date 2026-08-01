@@ -47,19 +47,23 @@ export async function POST(req: Request) {
         return NextResponse.json(updated);
       }
 
-      // Local dev: use in-process daemon
-      await prisma.whatsappSettings.update({
-        where: { id: currentSettings.id },
-        data: { status: "connecting", qrCode: null },
-      });
+      // ── LOCAL DEV ONLY ──────────────────────────────────────────────────────
+      // Uncomment the block below when running locally (without Railway bot).
+      // Keep commented out in production to prevent zombie daemon instances.
+      // ────────────────────────────────────────────────────────────────────────
+      // await prisma.whatsappSettings.update({
+      //   where: { id: currentSettings.id },
+      //   data: { status: "connecting", qrCode: null },
+      // });
+      // const { initWhatsappSocket } = await import("@/lib/whatsapp-daemon");
+      // initWhatsappSocket().catch((err) =>
+      //   console.error("Error starting WA daemon:", err)
+      // );
+      // const updated = await getWhatsappSettings();
+      // return NextResponse.json(updated);
 
-      const { initWhatsappSocket } = await import("@/lib/whatsapp-daemon");
-      initWhatsappSocket().catch((err) =>
-        console.error("Error starting WA daemon:", err)
-      );
-
-      const updated = await getWhatsappSettings();
-      return NextResponse.json(updated);
+      // Production safety: if bot is not configured, return current settings unchanged
+      return NextResponse.json(currentSettings);
     }
 
     if (status === "disconnected") {
@@ -79,10 +83,20 @@ export async function POST(req: Request) {
         return NextResponse.json(updated);
       }
 
-      // Local dev: use in-process daemon
-      const { disconnectWhatsapp } = await import("@/lib/whatsapp-daemon");
-      await disconnectWhatsapp();
+      // ── LOCAL DEV ONLY ──────────────────────────────────────────────────────
+      // Uncomment the block below when running locally (without Railway bot).
+      // Keep commented out in production to prevent zombie daemon instances.
+      // ────────────────────────────────────────────────────────────────────────
+      // const { disconnectWhatsapp } = await import("@/lib/whatsapp-daemon");
+      // await disconnectWhatsapp();
+      // const updated = await getWhatsappSettings();
+      // return NextResponse.json(updated);
 
+      // Production safety: if bot is not configured, update DB directly
+      await prisma.whatsappSettings.update({
+        where: { id: currentSettings.id },
+        data: { status: "disconnected", qrCode: null },
+      });
       const updated = await getWhatsappSettings();
       return NextResponse.json(updated);
     }
