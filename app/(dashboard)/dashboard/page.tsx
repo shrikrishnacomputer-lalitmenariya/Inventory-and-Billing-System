@@ -99,23 +99,28 @@ export default function DashboardPage() {
   const handleConnectWhatsapp = async () => {
     try {
       setWhatsappLoading(true);
-      setShowQrModal(true);
       const res = await fetch("/api/v1/whatsapp/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "connecting" }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setWhatsappSettings(data);
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to start WhatsApp connection. Please try again.");
+        return;
       }
+
+      const data = await res.json();
+      setWhatsappSettings(data);
+      setShowQrModal(true);
     } catch (err) {
       console.error(err);
+      alert("Failed to connect. Check your network and try again.");
     } finally {
       setWhatsappLoading(false);
     }
   };
-
   const handleDisconnectWhatsapp = async () => {
     if (!confirm("Are you sure you want to disconnect WhatsApp? This will log out the session and clear credentials.")) {
       return;

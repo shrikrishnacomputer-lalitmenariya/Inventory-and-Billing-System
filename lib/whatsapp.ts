@@ -72,26 +72,18 @@ export async function attemptWhatsappDelivery(deliveryId: number, pdfBase64?: st
         messageText += `\n\n*Payment Reminder:* You have a pending due amount of ₹${bill.dueAmount}. Please settle it at your earliest convenience.`;
       }
 
-      // Use Railway bot in production, local daemon in dev
+      // Always use Railway bot in production
       const { isBotConfigured, botSendMessage } = await import("./whatsapp-client");
-      if (isBotConfigured()) {
-        await botSendMessage(
-          delivery.mobileNumber,
-          messageText,
-          delivery.pdfPath,
-          `SKC_Invoice_${delivery.billNumber}.pdf`,
-          pdfBase64
-        );
-      } else {
-        const { sendWhatsappMessage } = await import("./whatsapp-daemon");
-        await sendWhatsappMessage(
-          delivery.mobileNumber,
-          messageText,
-          delivery.pdfPath,
-          `SKC_Invoice_${delivery.billNumber}.pdf`,
-          pdfBase64
-        );
+      if (!isBotConfigured()) {
+        throw new Error("WhatsApp bot is not configured. Set WHATSAPP_BOT_URL and WHATSAPP_API_KEY environment variables.");
       }
+      await botSendMessage(
+        delivery.mobileNumber,
+        messageText,
+        delivery.pdfPath,
+        `SKC_Invoice_${delivery.billNumber}.pdf`,
+        pdfBase64
+      );
     } catch (error: any) {
       console.error("Failed to send WhatsApp message:", error);
       status = "failed";
